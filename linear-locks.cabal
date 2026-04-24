@@ -4,11 +4,11 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 
-name:           surelock-playground
+name:           linear-locks
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/surelock-playground#readme>
-homepage:       https://github.com/githubuser/surelock-playground#readme
-bug-reports:    https://github.com/githubuser/surelock-playground/issues
+description:    Please see the README on GitHub at <https://github.com/githubuser/linear-locks#readme>
+homepage:       https://github.com/githubuser/linear-locks#readme
+bug-reports:    https://github.com/githubuser/linear-locks/issues
 author:         Author name here
 maintainer:     example@example.com
 copyright:      2026 Author name here
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/surelock-playground
+  location: https://github.com/githubuser/linear-locks
 
 library
   exposed-modules:
@@ -30,9 +30,9 @@ library
       Surelock
       SurelockRIO
   other-modules:
-      Paths_surelock_playground
+      Paths_linear_locks
   autogen-modules:
-      Paths_surelock_playground
+      Paths_linear_locks
   hs-source-dirs:
       src
   default-extensions:
@@ -49,12 +49,12 @@ library
     , text
   default-language: Haskell2010
 
-executable surelock-playground-exe
+executable linear-locks-exe
   main-is: Main.hs
   other-modules:
-      Paths_surelock_playground
+      Paths_linear_locks
   autogen-modules:
-      Paths_surelock_playground
+      Paths_linear_locks
   hs-source-dirs:
       app
   default-extensions:
@@ -67,18 +67,18 @@ executable surelock-playground-exe
     , containers
     , focus
     , linear-base
+    , linear-locks
     , stm-containers
-    , surelock-playground
     , text
   default-language: Haskell2010
 
-test-suite surelock-playground-test
+test-suite linear-locks-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_surelock_playground
+      Paths_linear_locks
   autogen-modules:
-      Paths_surelock_playground
+      Paths_linear_locks
   hs-source-dirs:
       test
   default-extensions:
@@ -91,7 +91,7 @@ test-suite surelock-playground-test
     , containers
     , focus
     , linear-base
+    , linear-locks
     , stm-containers
-    , surelock-playground
     , text
   default-language: Haskell2010
