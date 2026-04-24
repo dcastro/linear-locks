@@ -54,6 +54,16 @@ ghc-options:
 library:
   source-dirs: src
 
+internal-libraries:
+  linear-locks-examples:
+    source-dirs: examples
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - linear-locks
+
 tests:
   linear-locks-test:
     main: Spec.hs
