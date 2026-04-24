@@ -4,8 +4,9 @@
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
-module SurelockRIO where
+module LinearLocks.Internal where
 
 import Control.Concurrent (MVar, ThreadId, myThreadId)
 import Control.Concurrent qualified as MVar

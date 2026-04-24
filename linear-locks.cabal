@@ -25,7 +25,8 @@ source-repository head
 
 library
   exposed-modules:
-      SurelockRIO
+      LinearLocks
+      LinearLocks.Internal
   other-modules:
       Paths_linear_locks
   autogen-modules:
