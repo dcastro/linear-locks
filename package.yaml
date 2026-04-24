@@ -1,10 +1,10 @@
 name: linear-locks
 version: 0.1.0.0
-github: 'githubuser/linear-locks'
+github: 'dcastro/linear-locks'
 license: BSD-3-Clause
-author: 'Author name here'
-maintainer: 'example@example.com'
-copyright: '2026 Author name here'
+author: 'Diogo Castro'
+maintainer: 'dc@diogocastro.com'
+copyright: '2026 Diogo Castro'
 
 extra-source-files:
   - README.md
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description: Please see the README on GitHub at <https://github.com/githubuser/linear-locks#readme>
+description: Please see the README on GitHub at <https://github.com/dcastro/linear-locks#readme>
 
 dependencies:
   - base
@@ -53,17 +53,6 @@ ghc-options:
 
 library:
   source-dirs: src
-
-executables:
-  linear-locks-exe:
-    main: Main.hs
-    source-dirs: app
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - linear-locks
 
 tests:
   linear-locks-test:
