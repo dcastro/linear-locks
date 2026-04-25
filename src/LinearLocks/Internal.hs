@@ -9,6 +9,8 @@ import Control.Concurrent (MVar, ThreadId, myThreadId)
 import Control.Concurrent qualified as MVar
 import Control.Exception (Exception (..), bracket_, throw)
 import Control.Functor.Linear qualified as L
+import Data.Atomics.Counter (AtomicCounter)
+import Data.Atomics.Counter qualified as Atomic
 import Data.Kind (Type)
 import Focus qualified
 import GHC.Conc (atomically)
@@ -27,7 +29,10 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 --  * Do not implement `Consumable` / `Movable`
 data MutexKey (lvl :: Nat) (scope :: Type) = MutexKey
 
-newtype Mutex (lvl :: Nat) a = Mutex {getVar :: MVar a}
+data Mutex (lvl :: Nat) a = Mutex
+  { var :: MVar a,
+    id :: Int
+  }
 
 data MutexGuard a = MutexGuard
   { resource :: RIO.Resource (MutexResource a),
@@ -47,7 +52,8 @@ data MutexResource a = MutexResource
     var :: MVar a
   }
 
--- | Consume the key and return a new key (with an increased level) in linear IO
+-- | Acquire a mutex.
+-- Consumes the key and return a new key (with an increased level).
 lock ::
   forall a keyLvl mutexLvl scope.
   (keyLvl <= mutexLvl) =>
@@ -66,8 +72,8 @@ lock MutexKey m = L.do
   where
     acq :: L.IO (Ur (MutexResource a))
     acq = L.do
-      Ur a <- L.fromSystemIOU L.$ MVar.takeMVar m.getVar
-      L.pure (Ur (MutexResource {commitValue = a, var = m.getVar}))
+      Ur a <- L.fromSystemIOU L.$ MVar.takeMVar m.var
+      L.pure (Ur (MutexResource {commitValue = a, var = m.var}))
 
     rel :: MutexResource a -> L.IO ()
     rel (MutexResource (commitValue) var) =
@@ -88,7 +94,8 @@ releaseGuard (MutexGuard (Internal.UnsafeResource key mr) (Ur newValue)) =
 mkMutex :: forall lvl a. a -> IO (Mutex lvl a)
 mkMutex a = do
   var <- MVar.newMVar a
-  pure (Mutex var)
+  newId <- Atomic.incrCounter 1 mutexIdCounter
+  pure (Mutex var newId)
 
 -- | Creates a new lock scope with a key of level 0, and runs the given function with it.
 --  The key can be used to lock mutexes with `lock`.
@@ -158,3 +165,9 @@ lockScopes :: StmSet.Set ThreadId
 lockScopes =
   -- See: https://wiki.haskell.org/index.php?oldid=64612
   unsafePerformIO StmSet.newIO
+
+-- | An atomic counter used to generate unique IDs for mutexes.
+{-# NOINLINE mutexIdCounter #-}
+mutexIdCounter :: AtomicCounter
+mutexIdCounter =
+  unsafePerformIO $ Atomic.newCounter 0

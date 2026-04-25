@@ -52,6 +52,7 @@ library:
     - linear-base
     - stm-containers
     - focus
+    - atomic-primops
 
 internal-libraries:
   linear-locks-examples:
