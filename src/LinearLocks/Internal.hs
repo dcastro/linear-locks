@@ -34,13 +34,13 @@ newtype Mutex (lvl :: Nat) a = Mutex {getVar :: MVar a}
 
 data MutexGuard a = MutexGuard
   { resource :: RIO.Resource (MutexResource a),
-    -- The latest value set by the user.
+    -- | The latest value set by the user.
     -- This will be comitted to the MVar when the guard is released.
     newValue :: Ur a
   }
 
 data MutexResource a = MutexResource
-  { -- The value to put back into the MVar when the mutex guard is released.
+  { -- | The value to put back into the MVar when the mutex guard is released.
     --
     -- This starts out as the same value that was in the MVar when the mutex was acquired.
     -- This ensures that, if an exception is thrown, the same value will be put back in and the MVar won't be modified.
@@ -58,12 +58,14 @@ lock ::
   Mutex mutexLvl a ->
   RIO (MutexGuard a, MutexKey (mutexLvl + 1) scope)
 lock MutexKey m = L.do
-  resource <- RIO.unsafeAcquire acq rel
-  -- NOTE: unsafeAcquire does not let us return additional data (e.g. `commitValue`), so
-  -- we have to retrieve the `commitValue` from the resource after acquiring it.
-  (Ur commitValue, resource) <- RIO.unsafeFromSystemIOResource (\mr -> pure mr.commitValue) resource
-
-  L.pure (MutexGuard {resource, newValue = Ur commitValue}, MutexKey)
+  Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
+  L.pure
+    ( MutexGuard
+        { resource = Internal.UnsafeResource key guard,
+          newValue = Ur guard.commitValue
+        },
+      MutexKey
+    )
   where
     acq :: L.IO (Ur (MutexResource a))
     acq = L.do
