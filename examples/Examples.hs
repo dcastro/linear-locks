@@ -1,16 +1,13 @@
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LinearTypes #-}
-{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE QualifiedDo #-}
-{-# LANGUAGE NoFieldSelectors #-}
 
 module Examples where
 
-import LinearLocks
 import Control.Functor.Linear qualified as L
-import System.IO.Resource.Linear.Internal qualified as Internal
+import LinearLocks
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
+import System.IO.Resource.Linear.Internal qualified as Internal
 
 -- Acquire 1 lock
 example1 :: IO ()
