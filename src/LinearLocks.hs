@@ -9,12 +9,15 @@ module LinearLocks
     readGuard,
     writeGuard,
     releaseGuard,
+
     -- * Mutex sets
     MutexSet,
-    IsMutexSet(), -- Note: do not export the typeclass members
+    IsMutexSet (), -- Note: do not export the typeclass members
     mkMutexSet,
-    lockMany
+    lockMany,
   )
 where
 
 import LinearLocks.Internal
+import LinearLocks.Internal.Mutex
+import LinearLocks.Internal.MutexSet
