@@ -86,19 +86,17 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b) where
       lockAt (MutexSetIndex index) =
         case index of
           0 -> L.do
-            guard1 <- L.lift (unsafeLock m1)
             modifyM \case
-              (Nothing, b) -> L.pure (Just guard1, b)
-              guards -> L.do
-                releaseGuard guard1
-                releaseAndFail guards (dupIndex index)
+              (Nothing, b) -> L.do
+                guard1 <- unsafeLock m1
+                L.pure (Just guard1, b)
+              guards -> releaseAndFail guards (dupIndex index)
           1 -> L.do
-            guard2 <- L.lift (unsafeLock m2)
             modifyM \case
-              (a, Nothing) -> L.pure (a, Just guard2)
-              guards -> L.do
-                releaseGuard guard2
-                releaseAndFail guards (dupIndex index)
+              (a, Nothing) -> L.do
+                guard2 <- unsafeLock m2
+                L.pure (a, Just guard2)
+              guards -> releaseAndFail guards (dupIndex index)
           _ -> L.lift (failRIO (invalidIndex index))
 
       releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b)) %1 -> String -> RIO x
@@ -123,25 +121,25 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c) where
       lockAt (MutexSetIndex index) =
         case index of
           0 -> L.do
-            guard1 <- L.lift (unsafeLock m1)
             modifyM \case
-              (Nothing, b, c) -> L.pure (Just guard1, b, c)
+              (Nothing, b, c) -> L.do
+                guard1 <- unsafeLock m1
+                L.pure (Just guard1, b, c)
               guards -> L.do
-                releaseGuard guard1
                 releaseAndFail guards (dupIndex index)
           1 -> L.do
-            guard2 <- L.lift (unsafeLock m2)
             modifyM \case
-              (a, Nothing, c) -> L.pure (a, Just guard2, c)
+              (a, Nothing, c) -> L.do
+                guard2 <- unsafeLock m2
+                L.pure (a, Just guard2, c)
               guards -> L.do
-                releaseGuard guard2
                 releaseAndFail guards (dupIndex index)
           2 -> L.do
-            guard3 <- L.lift (unsafeLock m3)
             modifyM \case
-              (a, b, Nothing) -> L.pure (a, b, Just guard3)
+              (a, b, Nothing) -> L.do
+                guard3 <- unsafeLock m3
+                L.pure (a, b, Just guard3)
               guards -> L.do
-                releaseGuard guard3
                 releaseAndFail guards (dupIndex index)
           _ -> L.lift (failRIO (invalidIndex index))
 
