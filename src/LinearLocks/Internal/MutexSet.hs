@@ -80,7 +80,7 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b) where
     guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing)
     case guards of
       (Just guard1, Just guard2) -> L.pure (guard1, guard2)
-      guards -> releaseAndFail guards "Invalid indices or duplicate indices"
+      guards -> releaseAndFail guards missingIndices
     where
       lockAt :: MutexSetIndex -> L.StateT (Maybe (MutexGuard a), Maybe (MutexGuard b)) RIO ()
       lockAt (MutexSetIndex index) =
@@ -91,15 +91,15 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b) where
               (Nothing, b) -> L.pure (Just guard1, b)
               guards -> L.do
                 releaseGuard guard1
-                releaseAndFail guards "Invalid indices or duplicate indices"
+                releaseAndFail guards (dupIndex index)
           1 -> L.do
             guard2 <- L.lift (unsafeLock m2)
             modifyM \case
               (a, Nothing) -> L.pure (a, Just guard2)
               guards -> L.do
                 releaseGuard guard2
-                releaseAndFail guards "Invalid indices or duplicate indices"
-          _ -> L.lift (failRIO "Invalid index")
+                releaseAndFail guards (dupIndex index)
+          _ -> L.lift (failRIO (invalidIndex index))
 
       releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b)) %1 -> String -> RIO x
       releaseAndFail (guard1, guard2) errMsg = L.do
@@ -117,7 +117,7 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c) where
     guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing)
     case guards of
       (Just guard1, Just guard2, Just guard3) -> L.pure (guard1, guard2, guard3)
-      guards -> releaseAndFail guards "Invalid indices or duplicate indices"
+      guards -> releaseAndFail guards missingIndices
     where
       lockAt :: MutexSetIndex -> L.StateT (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c)) RIO ()
       lockAt (MutexSetIndex index) =
@@ -128,22 +128,22 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c) where
               (Nothing, b, c) -> L.pure (Just guard1, b, c)
               guards -> L.do
                 releaseGuard guard1
-                releaseAndFail guards "Invalid indices or duplicate indices"
+                releaseAndFail guards (dupIndex index)
           1 -> L.do
             guard2 <- L.lift (unsafeLock m2)
             modifyM \case
               (a, Nothing, c) -> L.pure (a, Just guard2, c)
               guards -> L.do
                 releaseGuard guard2
-                releaseAndFail guards "Invalid indices or duplicate indices"
+                releaseAndFail guards (dupIndex index)
           2 -> L.do
             guard3 <- L.lift (unsafeLock m3)
             modifyM \case
               (a, b, Nothing) -> L.pure (a, b, Just guard3)
               guards -> L.do
                 releaseGuard guard3
-                releaseAndFail guards "Invalid indices or duplicate indices"
-          _ -> L.lift (failRIO "Invalid index")
+                releaseAndFail guards (dupIndex index)
+          _ -> L.lift (failRIO (invalidIndex index))
 
       releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c)) %1 -> String -> RIO x
       releaseAndFail (guard1, guard2, guard3) errMsg = L.do
@@ -155,6 +155,15 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c) where
 ----------------------------------------------------------------------------
 -- Utils
 ----------------------------------------------------------------------------
+
+missingIndices :: String
+missingIndices = "MutexSet: missing indices"
+
+dupIndex :: Int -> String
+dupIndex index = "MutexSet: duplicate index: " <> show index
+
+invalidIndex :: Int -> String
+invalidIndex index = "MutexSet: invalid index: " <> show index
 
 releaseGuardMb :: Maybe (MutexGuard a) %1 -> RIO ()
 releaseGuardMb = \case
