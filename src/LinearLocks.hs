@@ -19,5 +19,4 @@ module LinearLocks
 where
 
 import LinearLocks.Internal
-import LinearLocks.Internal.Mutex
 import LinearLocks.Internal.MutexSet

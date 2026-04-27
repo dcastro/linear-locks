@@ -12,8 +12,8 @@ import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.Kind (Type)
 import Data.List qualified as List
-import GHC.TypeLits (Nat)
-import LinearLocks.Internal.Mutex
+import GHC.TypeLits (Nat, type (+), type (<=))
+import LinearLocks.Internal
 import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear.Internal qualified as Internal
 
@@ -30,6 +30,16 @@ mkMutexSet set = MutexSet set sortedIndices
     ids = collectIds set
     indices = coerce @_ @[MutexSetIndex] [0 .. length ids - 1]
     sortedIndices = ids `zip` indices & List.sortOn fst <&> snd
+
+lockMany ::
+  forall keyLvl mutexLvl set scope.
+  (IsMutexSet set, mutexLvl ~ MutexSetLevel set, keyLvl <= mutexLvl) =>
+  MutexKey keyLvl scope %1 ->
+  MutexSet set ->
+  RIO (MutexGuardSet set, MutexKey (mutexLvl + 1) scope)
+lockMany MutexKey (MutexSet set indices) = L.do
+  guards <- lockInOrder indices set
+  L.pure (guards, MutexKey)
 
 class IsMutexSet set where
   type MutexGuardSet set :: Type

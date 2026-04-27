@@ -27,7 +27,6 @@ library
   exposed-modules:
       LinearLocks
       LinearLocks.Internal
-      LinearLocks.Internal.Mutex
       LinearLocks.Internal.MutexSet
   other-modules:
       Paths_linear_locks
