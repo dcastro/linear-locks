@@ -9,6 +9,11 @@ module LinearLocks
     readGuard,
     writeGuard,
     releaseGuard,
+    -- * Mutex sets
+    MutexSet,
+    IsMutexSet(), -- Note: do not export the typeclass members
+    mkMutexSet,
+    lockMany
   )
 where
 

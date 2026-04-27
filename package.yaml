@@ -26,6 +26,7 @@ default-extensions:
   - DuplicateRecordFields
   - OverloadedRecordDot
   - NoFieldSelectors
+  - TypeFamilies
 
 ghc-options:
   - -Weverything
