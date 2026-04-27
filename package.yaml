@@ -54,6 +54,7 @@ library:
     - stm-containers
     - focus
     - atomic-primops
+    - vector
 
 internal-libraries:
   linear-locks-examples:
