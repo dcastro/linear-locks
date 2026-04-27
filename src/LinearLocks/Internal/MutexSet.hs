@@ -64,7 +64,7 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b) where
     guards <- L.execStateT (runLocks indices) (Nothing, Nothing)
     case guards of
       (Just guard1, Just guard2) -> L.pure (guard1, guard2)
-      guards -> linearFailRIO guards "Invalid indices or duplicate indices"
+      guards -> releaseAndFail guards "Invalid indices or duplicate indices"
     where
       runLocks :: [MutexSetIndex] -> L.StateT (Maybe (MutexGuard a), Maybe (MutexGuard b)) RIO ()
       runLocks [] = L.pure ()
@@ -73,25 +73,34 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b) where
           guard1 <- L.lift (unsafeLock m1)
           modifyM \case
             (Nothing, b) -> L.pure (Just guard1, b)
-            guards -> linearFailRIO (guards, guard1) "Invalid indices or duplicate indices"
+            guards -> L.do
+              releaseGuard guard1
+              releaseAndFail guards "Invalid indices or duplicate indices"
           runLocks rest
         1 -> L.do
           guard2 <- L.lift (unsafeLock m2)
           modifyM \case
             (a, Nothing) -> L.pure (a, Just guard2)
-            guards -> linearFailRIO (guards, guard2) "Invalid indices or duplicate indices"
+            guards -> L.do
+              releaseGuard guard2
+              releaseAndFail guards "Invalid indices or duplicate indices"
           runLocks rest
         _ -> L.lift (failRIO "Invalid index")
+
+      releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b)) %1 -> String -> RIO x
+      releaseAndFail (guard1, guard2) errMsg = L.do
+        releaseGuardMb guard1
+        releaseGuardMb guard2
+        failRIO errMsg
 
 ----------------------------------------------------------------------------
 -- Utils
 ----------------------------------------------------------------------------
 
-linearFailRIO :: forall discard a. discard %1 -> String -> RIO a
-linearFailRIO val msg = L.do
-  failRIO msg
-  -- "Consume" the linear value.
-  undefined val
+releaseGuardMb :: Maybe (MutexGuard a) %1 -> RIO ()
+releaseGuardMb = \case
+  Nothing -> L.pure ()
+  Just guard -> releaseGuard guard
 
 failRIO :: String -> RIO a
 failRIO msg = L.do
