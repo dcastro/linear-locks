@@ -33,8 +33,8 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 
 -- Notes:
 --  * Do not export the constructor
---  * Do not implement `Consumable` / `Movable`
-data MutexKey (lvl :: Nat) (scope :: Type) = MutexKey
+--  * Do not implement `Consumable` / `Dupable` / `Movable`
+data MutexKey (lvl :: Nat) (scope :: Type) = UnsafeMutexKey
 
 -- | A unique identifier for a mutex.
 newtype MutexId = MutexId Int
@@ -82,9 +82,9 @@ lock ::
   MutexKey keyLvl scope %1 ->
   Mutex mutexLvl a ->
   RIO (MutexGuard a, MutexKey (mutexLvl + 1) scope)
-lock MutexKey m = L.do
+lock UnsafeMutexKey m = L.do
   guard <- unsafeLock m
-  L.pure (guard, MutexKey)
+  L.pure (guard, UnsafeMutexKey)
 
 -- | This is marked as unsafe because it does not consume a `MutexKey`.
 unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
@@ -145,8 +145,8 @@ lockScope ::
 lockScope run = do
   ensureNotNested do
     RIO.run L.do
-      let key = MutexKey @0
-      (a, MutexKey) <- run key
+      let key = UnsafeMutexKey @0
+      (a, UnsafeMutexKey) <- run key
       L.pure a
   where
     -- Ensures nested lock scopes are not created.

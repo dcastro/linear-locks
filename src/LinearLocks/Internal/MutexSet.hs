@@ -90,9 +90,9 @@ lockMany ::
   MutexKey keyLvl scope %1 ->
   MutexSet set ->
   RIO (MutexGuardSet set, MutexKey (mutexLvl + 1) scope)
-lockMany MutexKey (MutexSet set indices) = L.do
+lockMany UnsafeMutexKey (MutexSet set indices) = L.do
   guards <- lockInOrder indices set
-  L.pure (guards, MutexKey)
+  L.pure (guards, UnsafeMutexKey)
 
 class IsMutexSet set where
   type MutexGuardSet set :: Type
