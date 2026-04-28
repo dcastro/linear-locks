@@ -83,30 +83,28 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b) where
   lockInOrder indices (m1, m2) = L.do
     guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing)
     case guards of
-      (Just guard1, Just guard2) -> L.pure (guard1, guard2)
+      (Just g1, Just g2) -> L.pure (g1, g2)
       guards -> releaseAndFail guards missingIndices
     where
       lockAt :: MutexSetIndex -> L.StateT (Maybe (MutexGuard a), Maybe (MutexGuard b)) RIO ()
       lockAt (MutexSetIndex index) =
         case index of
-          0 -> L.do
-            modifyM \case
-              (Nothing, b) -> L.do
-                guard1 <- unsafeLock m1
-                L.pure (Just guard1, b)
-              guards -> releaseAndFail guards (dupIndex index)
-          1 -> L.do
-            modifyM \case
-              (a, Nothing) -> L.do
-                guard2 <- unsafeLock m2
-                L.pure (a, Just guard2)
-              guards -> releaseAndFail guards (dupIndex index)
+          0 -> modifyM \case
+            (Nothing, g2) -> L.do
+              g1 <- unsafeLock m1
+              L.pure (Just g1, g2)
+            guards -> releaseAndFail guards (dupIndex index)
+          1 -> modifyM \case
+            (g1, Nothing) -> L.do
+              g2 <- unsafeLock m2
+              L.pure (g1, Just g2)
+            guards -> releaseAndFail guards (dupIndex index)
           _ -> L.lift (failRIO (invalidIndex index))
 
       releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b)) %1 -> String -> RIO x
-      releaseAndFail (guard1, guard2) errMsg = L.do
-        releaseGuardMb guard1
-        releaseGuardMb guard2
+      releaseAndFail (g1, g2) errMsg = L.do
+        releaseGuardMb g1
+        releaseGuardMb g2
         failRIO errMsg
 
 instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c) where
@@ -118,40 +116,37 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c) where
   lockInOrder indices (m1, m2, m3) = L.do
     guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing)
     case guards of
-      (Just guard1, Just guard2, Just guard3) -> L.pure (guard1, guard2, guard3)
+      (Just g1, Just g2, Just g3) -> L.pure (g1, g2, g3)
       guards -> releaseAndFail guards missingIndices
     where
       lockAt :: MutexSetIndex -> L.StateT (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c)) RIO ()
       lockAt (MutexSetIndex index) =
         case index of
-          0 -> L.do
-            modifyM \case
-              (Nothing, b, c) -> L.do
-                guard1 <- unsafeLock m1
-                L.pure (Just guard1, b, c)
-              guards -> L.do
-                releaseAndFail guards (dupIndex index)
-          1 -> L.do
-            modifyM \case
-              (a, Nothing, c) -> L.do
-                guard2 <- unsafeLock m2
-                L.pure (a, Just guard2, c)
-              guards -> L.do
-                releaseAndFail guards (dupIndex index)
-          2 -> L.do
-            modifyM \case
-              (a, b, Nothing) -> L.do
-                guard3 <- unsafeLock m3
-                L.pure (a, b, Just guard3)
-              guards -> L.do
-                releaseAndFail guards (dupIndex index)
+          0 -> modifyM \case
+            (Nothing, g2, g3) -> L.do
+              g1 <- unsafeLock m1
+              L.pure (Just g1, g2, g3)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          1 -> modifyM \case
+            (g1, Nothing, g3) -> L.do
+              g2 <- unsafeLock m2
+              L.pure (g1, Just g2, g3)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          2 -> modifyM \case
+            (g1, g2, Nothing) -> L.do
+              g3 <- unsafeLock m3
+              L.pure (g1, g2, Just g3)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
           _ -> L.lift (failRIO (invalidIndex index))
 
       releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c)) %1 -> String -> RIO x
-      releaseAndFail (guard1, guard2, guard3) errMsg = L.do
-        releaseGuardMb guard1
-        releaseGuardMb guard2
-        releaseGuardMb guard3
+      releaseAndFail (g1, g2, g3) errMsg = L.do
+        releaseGuardMb g1
+        releaseGuardMb g2
+        releaseGuardMb g3
         failRIO errMsg
 
 ----------------------------------------------------------------------------
