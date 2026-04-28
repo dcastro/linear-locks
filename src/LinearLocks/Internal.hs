@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LinearTypes #-}
 {-# LANGUAGE QualifiedDo #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
@@ -13,6 +14,10 @@ import Control.Functor.Linear qualified as L
 import Data.Atomics.Counter (AtomicCounter)
 import Data.Atomics.Counter qualified as Atomic
 import Data.Kind (Type)
+import Data.Vector.Generic qualified as VG
+import Data.Vector.Generic.Mutable qualified as VGM
+import Data.Vector.Primitive qualified as VP
+import Data.Vector.Unboxed qualified as VU
 import Focus qualified
 import GHC.Conc (atomically)
 import GHC.IO (unsafePerformIO)
@@ -33,6 +38,16 @@ data MutexKey (lvl :: Nat) (scope :: Type) = MutexKey
 -- | A unique identifier for a mutex.
 newtype MutexId = MutexId Int
   deriving newtype (Eq, Ord)
+
+newtype instance VU.MVector s MutexId = MV_MutexId (VP.MVector s Int)
+
+newtype instance VU.Vector MutexId = V_MutexId (VP.Vector Int)
+
+deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector MutexId
+
+deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexId
+
+instance VU.Unbox MutexId
 
 data Mutex (lvl :: Nat) a = Mutex
   { var :: MVar a,

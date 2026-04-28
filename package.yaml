@@ -55,6 +55,7 @@ library:
     - focus
     - atomic-primops
     - vector
+    - vector-algorithms
 
 internal-libraries:
   linear-locks-examples:

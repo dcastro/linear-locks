@@ -50,6 +50,7 @@ library
     , linear-base
     , stm-containers
     , vector
+    , vector-algorithms
   default-language: Haskell2010
 
 library linear-locks-examples

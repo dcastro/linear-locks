@@ -8,11 +8,10 @@
 module LinearLocks.Internal.MutexSet where
 
 import Control.Functor.Linear qualified as L
-import Data.Coerce (coerce)
-import Data.Function ((&))
-import Data.Functor ((<&>))
+import Control.Monad.ST (runST)
+import Data.Function (on)
 import Data.Kind (Type)
-import Data.List qualified as List
+import Data.Vector.Algorithms.Insertion qualified as Sort
 import Data.Vector.Generic qualified as VG
 import Data.Vector.Generic.Mutable qualified as VGM
 import Data.Vector.Primitive qualified as VP
@@ -24,10 +23,11 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 
 -- | The index of a mutex in a mutex set.
 newtype MutexSetIndex = MutexSetIndex Int
+  deriving newtype (Enum)
 
-newtype instance VU.MVector s MutexSetIndex = MV_Int (VP.MVector s Int)
+newtype instance VU.MVector s MutexSetIndex = MV_MutexSetIndex (VP.MVector s Int)
 
-newtype instance VU.Vector MutexSetIndex = V_Int (VP.Vector Int)
+newtype instance VU.Vector MutexSetIndex = V_MutexSetIndex (VP.Vector Int)
 
 deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector MutexSetIndex
 
@@ -41,11 +41,15 @@ data MutexSet set where
 
 mkMutexSet :: (IsMutexSet set) => set -> MutexSet set
 mkMutexSet set =
-  MutexSet set $ VU.fromList sortedIndices
+  MutexSet set sortedIndices
   where
-    ids = collectIds set
-    indices = coerce @_ @[MutexSetIndex] [0 .. length ids - 1]
-    sortedIndices = ids `zip` indices & List.sortOn fst <&> snd
+    sortedIndices = runST do
+      idsAndIndices <- VU.thaw $ VU.fromList $ collectIds set `zip` [MutexSetIndex 0 ..]
+
+      -- Sort by mutex IDs
+      Sort.sortBy (compare `on` fst) idsAndIndices
+
+      VU.map snd <$> VU.unsafeFreeze idsAndIndices
 
 lockMany ::
   forall keyLvl mutexLvl set scope.
@@ -177,6 +181,7 @@ modifyM f =
   L.StateT \s -> L.do
     f s L.<&> \s' -> ((), s')
 
+-- | A version of `VU.forM_` that runs in a linear monad.
 forM_' :: (VU.Unbox a, L.Monad m) => VU.Vector a -> (a -> m ()) -> m ()
 forM_' vec action = go 0
   where
