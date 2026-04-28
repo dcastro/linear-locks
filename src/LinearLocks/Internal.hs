@@ -1,6 +1,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LinearTypes #-}
 {-# LANGUAGE QualifiedDo #-}
+{-# LANGUAGE RequiredTypeArguments #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_HADDOCK not-home #-}
@@ -116,8 +117,8 @@ releaseGuard :: MutexGuard a %1 -> RIO ()
 releaseGuard (MutexGuard (Internal.UnsafeResource key mr) (Ur newValue)) =
   RIO.release (Internal.UnsafeResource key (mr {commitValue = newValue}))
 
-mkMutex :: forall lvl a. a -> IO (Mutex lvl a)
-mkMutex a = do
+mkMutex :: forall a. forall lvl -> a -> IO (Mutex lvl a)
+mkMutex _lvl a = do
   var <- MVar.newMVar a
   newId <- Atomic.incrCounter 1 mutexIdCounter
   pure
