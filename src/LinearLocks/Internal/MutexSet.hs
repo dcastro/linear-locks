@@ -182,6 +182,111 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c) where
         releaseGuardMb g3
         failRIO errMsg
 
+instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d) where
+  type MutexGuardSet (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d) = (MutexGuard a, MutexGuard b, MutexGuard c, MutexGuard d)
+  type MutexSetLevel (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d) = lvl
+
+  collectIds (m1, m2, m3, m4) = [m1.id, m2.id, m3.id, m4.id]
+
+  lockInOrder indices (m1, m2, m3, m4) = L.do
+    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing, Nothing)
+    case guards of
+      (Just g1, Just g2, Just g3, Just g4) -> L.pure (g1, g2, g3, g4)
+      guards -> releaseAndFail guards missingIndices
+    where
+      lockAt :: MutexSetIndex -> L.StateT (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c), Maybe (MutexGuard d)) RIO ()
+      lockAt (MutexSetIndex index) =
+        case index of
+          0 -> modifyM \case
+            (Nothing, g2, g3, g4) -> L.do
+              g1 <- unsafeLock m1
+              L.pure (Just g1, g2, g3, g4)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          1 -> modifyM \case
+            (g1, Nothing, g3, g4) -> L.do
+              g2 <- unsafeLock m2
+              L.pure (g1, Just g2, g3, g4)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          2 -> modifyM \case
+            (g1, g2, Nothing, g4) -> L.do
+              g3 <- unsafeLock m3
+              L.pure (g1, g2, Just g3, g4)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          3 -> modifyM \case
+            (g1, g2, g3, Nothing) -> L.do
+              g4 <- unsafeLock m4
+              L.pure (g1, g2, g3, Just g4)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          _ -> L.lift (failRIO (invalidIndex index))
+
+      releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c), Maybe (MutexGuard d)) %1 -> String -> RIO x
+      releaseAndFail (g1, g2, g3, g4) errMsg = L.do
+        releaseGuardMb g1
+        releaseGuardMb g2
+        releaseGuardMb g3
+        releaseGuardMb g4
+        failRIO errMsg
+
+instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d, Mutex lvl e) where
+  type MutexGuardSet (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d, Mutex lvl e) = (MutexGuard a, MutexGuard b, MutexGuard c, MutexGuard d, MutexGuard e)
+  type MutexSetLevel (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d, Mutex lvl e) = lvl
+
+  collectIds (m1, m2, m3, m4, m5) = [m1.id, m2.id, m3.id, m4.id, m5.id]
+
+  lockInOrder indices (m1, m2, m3, m4, m5) = L.do
+    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing, Nothing, Nothing)
+    case guards of
+      (Just g1, Just g2, Just g3, Just g4, Just g5) -> L.pure (g1, g2, g3, g4, g5)
+      guards -> releaseAndFail guards missingIndices
+    where
+      lockAt :: MutexSetIndex -> L.StateT (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c), Maybe (MutexGuard d), Maybe (MutexGuard e)) RIO ()
+      lockAt (MutexSetIndex index) =
+        case index of
+          0 -> modifyM \case
+            (Nothing, g2, g3, g4, g5) -> L.do
+              g1 <- unsafeLock m1
+              L.pure (Just g1, g2, g3, g4, g5)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          1 -> modifyM \case
+            (g1, Nothing, g3, g4, g5) -> L.do
+              g2 <- unsafeLock m2
+              L.pure (g1, Just g2, g3, g4, g5)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          2 -> modifyM \case
+            (g1, g2, Nothing, g4, g5) -> L.do
+              g3 <- unsafeLock m3
+              L.pure (g1, g2, Just g3, g4, g5)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          3 -> modifyM \case
+            (g1, g2, g3, Nothing, g5) -> L.do
+              g4 <- unsafeLock m4
+              L.pure (g1, g2, g3, Just g4, g5)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          4 -> modifyM \case
+            (g1, g2, g3, g4, Nothing) -> L.do
+              g5 <- unsafeLock m5
+              L.pure (g1, g2, g3, g4, Just g5)
+            guards -> L.do
+              releaseAndFail guards (dupIndex index)
+          _ -> L.lift (failRIO (invalidIndex index))
+
+      releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c), Maybe (MutexGuard d), Maybe (MutexGuard e)) %1 -> String -> RIO x
+      releaseAndFail (g1, g2, g3, g4, g5) errMsg = L.do
+        releaseGuardMb g1
+        releaseGuardMb g2
+        releaseGuardMb g3
+        releaseGuardMb g4
+        releaseGuardMb g5
+        failRIO errMsg
+
 ----------------------------------------------------------------------------
 -- Utils
 ----------------------------------------------------------------------------
