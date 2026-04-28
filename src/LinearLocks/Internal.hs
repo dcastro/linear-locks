@@ -51,6 +51,7 @@ instance VU.Unbox MutexId
 
 data Mutex (lvl :: Nat) a = Mutex
   { var :: MVar a,
+    -- | The unique ID for this mutex. It's used to ensure `MutexSet`s don't contain duplicate mutexes, see 'mkMutexSet'.
     id :: MutexId
   }
 

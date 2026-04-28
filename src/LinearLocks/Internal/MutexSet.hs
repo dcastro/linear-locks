@@ -8,7 +8,7 @@
 module LinearLocks.Internal.MutexSet where
 
 import Control.Functor.Linear qualified as L
-import Control.Monad.ST (runST)
+import Control.Monad.ST (ST, runST)
 import Data.Function (on)
 import Data.Kind (Type)
 import Data.Vector.Algorithms.Insertion qualified as Sort
@@ -16,6 +16,7 @@ import Data.Vector.Generic qualified as VG
 import Data.Vector.Generic.Mutable qualified as VGM
 import Data.Vector.Primitive qualified as VP
 import Data.Vector.Unboxed qualified as VU
+import Data.Vector.Unboxed.Mutable qualified as VUM
 import GHC.TypeLits (Nat, type (+), type (<=))
 import LinearLocks.Internal
 import System.IO.Resource.Linear (RIO)
@@ -39,17 +40,49 @@ instance VU.Unbox MutexSetIndex
 data MutexSet set where
   MutexSet :: set -> VU.Vector MutexSetIndex -> MutexSet set
 
-mkMutexSet :: (IsMutexSet set) => set -> MutexSet set
+-- | Creates a `MutexSet` from a set of mutexes.
+-- All mutexes must have the same level.
+--
+-- Mutexes in a 'MutexSet' can be locked simultaneously using 'lockMany'.
+--
+-- Fails if the set contains duplicate mutexes.
+--
+-- >>> m1 <- mkMutex @1 "a"
+-- >>> m2 <- mkMutex @1 "b"
+-- >>> m3 <- mkMutex @1 "c"
+-- >>> set <- mkMutexSet (m1, m2, m3)
+mkMutexSet :: forall m set. (IsMutexSet set, MonadFail m) => set -> m (MutexSet set)
 mkMutexSet set =
-  MutexSet set sortedIndices
+  if hasDups
+    then fail "MutexSet: duplicate mutexes are not allowed"
+    else pure $ MutexSet set sortedIndices
   where
-    sortedIndices = runST do
+    (hasDups, sortedIndices) = runST do
       idsAndIndices <- VU.thaw $ VU.fromList $ collectIds set `zip` [MutexSetIndex 0 ..]
 
       -- Sort by mutex IDs
       Sort.sortBy (compare `on` fst) idsAndIndices
 
-      VU.map snd <$> VU.unsafeFreeze idsAndIndices
+      -- Check whether this set contains duplicate mutexes.
+      -- NOTE: the vector must already be sorted.
+      hasDups <- hasDuplicateIds idsAndIndices
+
+      sortedIndices <- VU.map snd <$> VU.unsafeFreeze idsAndIndices
+
+      pure (hasDups, sortedIndices)
+
+    hasDuplicateIds :: VUM.MVector (VUM.PrimState (ST s)) (MutexId, MutexSetIndex) -> ST s Bool
+    hasDuplicateIds idsAndIndices = do
+      let go i =
+            if i >= VUM.length idsAndIndices - 1
+              then pure False
+              else do
+                (id1, _) <- VUM.read idsAndIndices i
+                (id2, _) <- VUM.read idsAndIndices (i + 1)
+                if id1 == id2
+                  then pure True
+                  else go (i + 1)
+      go 0
 
 lockMany ::
   forall keyLvl mutexLvl set scope.

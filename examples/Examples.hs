@@ -76,7 +76,7 @@ example5 :: IO ()
 example5 = do
   m1 <- mkMutex @0 3
   m2 <- mkMutex @0 "hello world"
-  let mutexSet = mkMutexSet (m1, m2)
+  mutexSet <- mkMutexSet (m1, m2)
   lockScope \key -> L.do
     ((mg1, mg2), key) <- lockMany key mutexSet
     (Ur count, mg1) <- readGuard mg1
