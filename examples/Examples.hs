@@ -4,10 +4,11 @@
 module Examples where
 
 import Control.Functor.Linear qualified as L
+import Control.Monad (replicateM_)
 import LinearLocks
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
-import System.IO.Resource.Linear.Internal qualified as Internal
+import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
 
 -- Acquire 1 lock
 example1 :: IO ()
@@ -66,6 +67,25 @@ example4 = do
       releaseGuard mg1
       L.pure (Ur (), key)
 
+    releaseGuard mg2
+
+    L.pure (Ur (), key)
+
+-- Lock many locks with the same lvl using a `MutexSet`
+example5 :: IO ()
+example5 = do
+  m1 <- mkMutex @0 3
+  m2 <- mkMutex @0 "hello world"
+  mutexSet <- mkMutexSet (m1, m2)
+  lockScope \key -> L.do
+    ((mg1, mg2), key) <- lockMany key mutexSet
+    (Ur count, mg1) <- readGuard mg1
+    (Ur str, mg2) <- readGuard mg2
+
+    Internal.unsafeFromSystemIO do
+      replicateM_ count $ putStrLn str
+
+    releaseGuard mg1
     releaseGuard mg2
 
     L.pure (Ur (), key)

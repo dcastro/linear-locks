@@ -1,7 +1,9 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LinearTypes #-}
 {-# LANGUAGE QualifiedDo #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
 module LinearLocks.Internal where
 
@@ -9,7 +11,13 @@ import Control.Concurrent (MVar, ThreadId, myThreadId)
 import Control.Concurrent qualified as MVar
 import Control.Exception (Exception (..), bracket_, throw)
 import Control.Functor.Linear qualified as L
+import Data.Atomics.Counter (AtomicCounter)
+import Data.Atomics.Counter qualified as Atomic
 import Data.Kind (Type)
+import Data.Vector.Generic qualified as VG
+import Data.Vector.Generic.Mutable qualified as VGM
+import Data.Vector.Primitive qualified as VP
+import Data.Vector.Unboxed qualified as VU
 import Focus qualified
 import GHC.Conc (atomically)
 import GHC.IO (unsafePerformIO)
@@ -27,7 +35,25 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 --  * Do not implement `Consumable` / `Movable`
 data MutexKey (lvl :: Nat) (scope :: Type) = MutexKey
 
-newtype Mutex (lvl :: Nat) a = Mutex {getVar :: MVar a}
+-- | A unique identifier for a mutex.
+newtype MutexId = MutexId Int
+  deriving newtype (Eq, Ord)
+
+newtype instance VU.MVector s MutexId = MV_MutexId (VP.MVector s Int)
+
+newtype instance VU.Vector MutexId = V_MutexId (VP.Vector Int)
+
+deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector MutexId
+
+deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexId
+
+instance VU.Unbox MutexId
+
+data Mutex (lvl :: Nat) a = Mutex
+  { var :: MVar a,
+    -- | The unique ID for this mutex. It's used to ensure `MutexSet`s don't contain duplicate mutexes, see 'mkMutexSet'.
+    id :: MutexId
+  }
 
 data MutexGuard a = MutexGuard
   { resource :: RIO.Resource (MutexResource a),
@@ -47,7 +73,8 @@ data MutexResource a = MutexResource
     var :: MVar a
   }
 
--- | Consume the key and return a new key (with an increased level) in linear IO
+-- | Acquire a mutex.
+-- Consumes the key and return a new key (with an increased level).
 lock ::
   forall a keyLvl mutexLvl scope.
   (keyLvl <= mutexLvl) =>
@@ -55,19 +82,23 @@ lock ::
   Mutex mutexLvl a ->
   RIO (MutexGuard a, MutexKey (mutexLvl + 1) scope)
 lock MutexKey m = L.do
+  guard <- unsafeLock m
+  L.pure (guard, MutexKey)
+
+-- | This is marked as unsafe because it does not consume a `MutexKey`.
+unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
+unsafeLock m = L.do
   Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
   L.pure
-    ( MutexGuard
-        { resource = Internal.UnsafeResource key guard,
-          newValue = Ur guard.commitValue
-        },
-      MutexKey
-    )
+    MutexGuard
+      { resource = Internal.UnsafeResource key guard,
+        newValue = Ur guard.commitValue
+      }
   where
     acq :: L.IO (Ur (MutexResource a))
     acq = L.do
-      Ur a <- L.fromSystemIOU L.$ MVar.takeMVar m.getVar
-      L.pure (Ur (MutexResource {commitValue = a, var = m.getVar}))
+      Ur a <- L.fromSystemIOU L.$ MVar.takeMVar m.var
+      L.pure (Ur (MutexResource {commitValue = a, var = m.var}))
 
     rel :: MutexResource a -> L.IO ()
     rel (MutexResource (commitValue) var) =
@@ -88,7 +119,12 @@ releaseGuard (MutexGuard (Internal.UnsafeResource key mr) (Ur newValue)) =
 mkMutex :: forall lvl a. a -> IO (Mutex lvl a)
 mkMutex a = do
   var <- MVar.newMVar a
-  pure (Mutex var)
+  newId <- Atomic.incrCounter 1 mutexIdCounter
+  pure
+    Mutex
+      { var = var,
+        id = MutexId newId
+      }
 
 -- | Creates a new lock scope with a key of level 0, and runs the given function with it.
 --  The key can be used to lock mutexes with `lock`.
@@ -151,6 +187,10 @@ data NestedLocksScopeException = NestedLocksScopeException
 instance Exception NestedLocksScopeException where
   displayException NestedLocksScopeException = "Nested lock scopes are not allowed"
 
+----------------------------------------------------------------------------
+-- Global variables
+----------------------------------------------------------------------------
+
 -- | A set of the ThreadIds currently holding a lock scope.
 -- We use this to prevent nested lock scopes at runtime.
 {-# NOINLINE lockScopes #-}
@@ -158,3 +198,9 @@ lockScopes :: StmSet.Set ThreadId
 lockScopes =
   -- See: https://wiki.haskell.org/index.php?oldid=64612
   unsafePerformIO StmSet.newIO
+
+-- | An atomic counter used to generate unique IDs for mutexes.
+{-# NOINLINE mutexIdCounter #-}
+mutexIdCounter :: AtomicCounter
+mutexIdCounter =
+  unsafePerformIO $ Atomic.newCounter 0

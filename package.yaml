@@ -26,6 +26,7 @@ default-extensions:
   - DuplicateRecordFields
   - OverloadedRecordDot
   - NoFieldSelectors
+  - TypeFamilies
 
 ghc-options:
   - -Weverything
@@ -52,6 +53,9 @@ library:
     - linear-base
     - stm-containers
     - focus
+    - atomic-primops
+    - vector
+    - vector-algorithms
 
 internal-libraries:
   linear-locks-examples:
