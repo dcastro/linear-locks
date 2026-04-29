@@ -89,6 +89,7 @@ lock UnsafeMutexKey m = L.do
 -- | This is marked as unsafe because it does not consume a `MutexKey`.
 unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
 unsafeLock m = L.do
+  -- Note: we have to match on `UnsafeResource` so we can extract the `guard.commitValue`
   Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
   L.pure
     MutexGuard
@@ -102,7 +103,7 @@ unsafeLock m = L.do
       L.pure (Ur (MutexResource {commitValue = a, var = m.var}))
 
     rel :: MutexResource a -> L.IO ()
-    rel (MutexResource (commitValue) var) =
+    rel (MutexResource commitValue var) =
       L.void L.$ L.fromSystemIO L.$ MVar.putMVar var commitValue
 
 readGuard :: MutexGuard a %1 -> RIO (Ur a, MutexGuard a)
@@ -125,7 +126,7 @@ releaseGuard (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.d
   release' (Internal.UnsafeResource key mr) L.do
     L.void L.$ L.fromSystemIO L.$ MVar.putMVar mr.var newValue
 
-mkMutex :: forall a. forall lvl -> a -> IO (Mutex lvl a)
+mkMutex :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
 mkMutex _lvl a = do
   var <- MVar.newMVar a
   newId <- Atomic.incrCounter 1 mutexIdCounter
