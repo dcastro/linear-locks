@@ -2,6 +2,11 @@
 default:
     just --list
 
+checks:
+    ./scripts/check_doctest.sh
+    just doctest
+    stack test
+
 docs:
     stack haddock linear-locks:lib
 
