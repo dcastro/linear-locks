@@ -1,4 +1,5 @@
-{-# LANGUAGE LinearTypes #-}
+{-# LANGUAGE GHC2024 #-}
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE QualifiedDo #-}
 
 module Examples where

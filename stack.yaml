@@ -23,6 +23,7 @@ resolver: lts-24.37
 
 packages:
   - .
+  - examples
 
 # Uncomment to use GHC 9.14.1
 # resolver: ghc-9.14.1

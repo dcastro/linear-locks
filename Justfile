@@ -3,7 +3,7 @@ default:
     just --list
 
 docs:
-    stack haddock
+    stack haddock linear-locks:lib
 
 doctest:
     stack build doctest
