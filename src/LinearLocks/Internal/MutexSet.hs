@@ -85,11 +85,11 @@ mkMutexSet set =
       go 0
 
 lockMany ::
-  forall keyLvl mutexLvl set scope.
+  forall keyLvl mutexLvl set.
   (IsMutexSet set, mutexLvl ~ MutexSetLevel set, keyLvl <= mutexLvl) =>
-  MutexKey keyLvl scope %1 ->
+  MutexKey keyLvl %1 ->
   MutexSet set ->
-  RIO (MutexGuardSet set, MutexKey (mutexLvl + 1) scope)
+  RIO (MutexGuardSet set, MutexKey (mutexLvl + 1))
 lockMany UnsafeMutexKey (MutexSet set indices) = L.do
   guards <- lockInOrder indices set
   L.pure (guards, UnsafeMutexKey)

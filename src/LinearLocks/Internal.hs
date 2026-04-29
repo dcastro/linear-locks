@@ -14,7 +14,6 @@ import Control.Exception (Exception (..), bracket_, throw)
 import Control.Functor.Linear qualified as L
 import Data.Atomics.Counter (AtomicCounter)
 import Data.Atomics.Counter qualified as Atomic
-import Data.Kind (Type)
 import Data.Vector.Generic qualified as VG
 import Data.Vector.Generic.Mutable qualified as VGM
 import Data.Vector.Primitive qualified as VP
@@ -34,7 +33,7 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 -- Notes:
 --  * Do not export the constructor
 --  * Do not implement `Consumable` / `Dupable` / `Movable`
-data MutexKey (lvl :: Nat) (scope :: Type) = UnsafeMutexKey
+data MutexKey (lvl :: Nat) = UnsafeMutexKey
 
 -- | A unique identifier for a mutex.
 newtype MutexId = MutexId Int
@@ -77,11 +76,11 @@ data MutexResource a = MutexResource
 -- | Acquire a mutex.
 -- Consumes the key and return a new key (with an increased level).
 lock ::
-  forall a keyLvl mutexLvl scope.
+  forall a keyLvl mutexLvl.
   (keyLvl <= mutexLvl) =>
-  MutexKey keyLvl scope %1 ->
+  MutexKey keyLvl %1 ->
   Mutex mutexLvl a ->
-  RIO (MutexGuard a, MutexKey (mutexLvl + 1) scope)
+  RIO (MutexGuard a, MutexKey (mutexLvl + 1))
 lock UnsafeMutexKey m = L.do
   guard <- unsafeLock m
   L.pure (guard, UnsafeMutexKey)
@@ -131,16 +130,14 @@ mkMutex _lvl a = do
 --  The key can be used to lock mutexes with `lock`.
 -- The final key must be returned.
 --
--- The key is indexed by a rank-2 type variable `scope` to prevent it from
--- being used outside of the scope of `lockScope`.
---
--- WARNING: Will throw a `NestedLocksScopeException` if a nested `lockScope` is created at runtime.
+-- Will throw a `NestedLocksScopeException` if a nested `lockScope` is created at runtime.
 lockScope ::
   forall a lvl.
-  ( forall (scope :: Type).
-    MutexKey 0 scope %1 ->
-    RIO (Ur a, MutexKey lvl scope)
-  ) ->
+  -- Note: The key is linearly typed and must be returned; this prevents it from escaping the scope of the `lockScope` function.
+  --
+  -- The use of `Ur` also prevents any linear values from escaping the scope via the variable `a`.
+  -- See: https://www.tweag.io/blog/2023-03-23-linear-constraints-linearly/#sticky-ends-of-scopes
+  (MutexKey 0 %1 -> RIO (Ur a, MutexKey lvl)) ->
   IO a
 lockScope run = do
   ensureNotNested do
