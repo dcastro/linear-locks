@@ -59,11 +59,22 @@ library:
 
 tests:
   linear-locks-test:
-    main: Spec.hs
+    main: Main.hs
     source-dirs: test
     ghc-options:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
+    build-tools: tasty-discover:tasty-discover
     dependencies:
       - base
+      - linear-locks
+      - linear-base
+      - tasty
+      - tasty-hunit
+      - tasty-hspec
+      - tasty-hedgehog
+      - hedgehog
+      - hspec
+      - hspec-expectations-pretty-diff
+      - tasty-golden
