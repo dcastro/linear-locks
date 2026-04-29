@@ -11,7 +11,10 @@ import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
 
--- Acquire 1 lock
+-- | Acquire 1 lock
+--
+-- >>> example1
+-- hello
 example1 :: IO ()
 example1 = do
   mutex <- mkMutex 0 "hello"
@@ -35,7 +38,10 @@ example1 = do
 --     releaseGuard mg2
 --     L.pure (Ur (), key)
 
--- Acquire 2 locks in order
+-- | Acquire 2 locks in order
+--
+-- >>> example3
+-- hello world
 example3 :: IO ()
 example3 = do
   m1 <- mkMutex 0 "hello"
@@ -53,8 +59,11 @@ example3 = do
 
     L.pure (Ur (), key)
 
--- Nested `lockScope`s.
+-- | Nested `lockScope`s.
 -- This should throw an exception.
+--
+-- >>> example4
+-- *** Exception: NestedLocksScopeException
 example4 :: IO ()
 example4 = do
   m1 <- mkMutex 0 "hello"
@@ -72,7 +81,12 @@ example4 = do
 
     L.pure (Ur (), key)
 
--- Lock many locks with the same lvl using a `MutexSet`
+-- | Lock many locks with the same lvl using a `MutexSet`
+--
+-- >>> example5
+-- hello world
+-- hello world
+-- hello world
 example5 :: IO ()
 example5 = do
   m1 <- mkMutex 0 3
