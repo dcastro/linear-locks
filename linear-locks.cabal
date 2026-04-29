@@ -46,6 +46,7 @@ library
   build-depends:
       atomic-primops
     , base
+    , containers
     , focus
     , linear-base
     , stm-containers

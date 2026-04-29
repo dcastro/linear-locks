@@ -14,6 +14,7 @@ import Control.Exception (Exception (..), bracket_, throw)
 import Control.Functor.Linear qualified as L
 import Data.Atomics.Counter (AtomicCounter)
 import Data.Atomics.Counter qualified as Atomic
+import Data.IntMap.Strict qualified as IntMap
 import Data.Vector.Generic qualified as VG
 import Data.Vector.Generic.Mutable qualified as VGM
 import Data.Vector.Primitive qualified as VP
@@ -113,8 +114,16 @@ writeGuard (MutexGuard resource (Ur _)) newValue =
   L.pure (MutexGuard {resource, newValue = Ur newValue})
 
 releaseGuard :: MutexGuard a %1 -> RIO ()
-releaseGuard (MutexGuard (Internal.UnsafeResource key mr) (Ur newValue)) =
-  RIO.release (Internal.UnsafeResource key (mr {commitValue = newValue}))
+releaseGuard (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
+  -- Note: the resource was initially registered with a release action that puts the original value back into the MVar.
+  -- That release action should be run if an exception is thrown before `releaseGuard` is called,
+  -- which ensures the MVar will "rollback" to its original state.
+  --
+  -- However, if `releaseGuard` is called explicitly by the user,
+  -- we want to update the release action to put `newValue` back into the MVar instead.
+  -- Therefore, we must call `release'` with a _new release action_ that puts `newValue` into the MVar.
+  release' (Internal.UnsafeResource key mr) L.do
+    L.void L.$ L.fromSystemIO L.$ MVar.putMVar mr.var newValue
 
 mkMutex :: forall a. forall lvl -> a -> IO (Mutex lvl a)
 mkMutex _lvl a = do
@@ -202,3 +211,16 @@ lockScopes =
 mutexIdCounter :: AtomicCounter
 mutexIdCounter =
   unsafePerformIO $ Atomic.newCounter 0
+
+----------------------------------------------------------------------------
+-- Utils
+----------------------------------------------------------------------------
+
+-- | Similar to 'RIO.release', except it uses a different release action than the one registered by 'unsafeAcquire'.
+release' :: RIO.Resource a %1 -> L.IO () -> RIO ()
+release' (Internal.UnsafeResource key _) release = Internal.RIO (\st -> L.mask_ (releaseWith key st))
+  where
+    releaseWith key rrm = L.do
+      Ur (Internal.ReleaseMap releaseMap) <- L.readIORef rrm
+      () <- release
+      L.writeIORef rrm (Internal.ReleaseMap (IntMap.delete key releaseMap))
