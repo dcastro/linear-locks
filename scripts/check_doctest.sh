@@ -155,7 +155,7 @@ while IFS= read -r -d '' file; do
     exit 1
     # Scan for plain doctest prompts like `>>> 1 + 1`.
   done < <(grep -nE '^[[:space:]]*>>>[[:space:]]+' "$file" || true)
-# Scan .hs files
-done < <(find "$repo_root" -name '*.hs' -print0)
+# Scan .hs and .lhs files
+done < <(find "$repo_root" \( -name '*.lhs' -o -name '*.hs' \) -print0)
 
 exit 0
