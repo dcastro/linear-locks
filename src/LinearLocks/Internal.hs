@@ -38,7 +38,7 @@ data MutexKey (lvl :: Nat) = UnsafeMutexKey
 
 -- | A unique identifier for a mutex.
 newtype MutexId = MutexId Int
-  deriving newtype (Eq, Ord)
+  deriving newtype (Eq, Ord, Show)
 
 newtype instance VU.MVector s MutexId = MV_MutexId (VP.MVector s Int)
 

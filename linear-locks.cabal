@@ -56,7 +56,7 @@ library
 
 test-suite linear-locks-test
   type: exitcode-stdio-1.0
-  main-is: Main.hs
+  main-is: Spec.hs
   other-modules:
       Test.LinearLocks.MutexSpec
       Paths_linear_locks
@@ -72,7 +72,7 @@ test-suite linear-locks-test
       OverloadedRecordDot
       NoFieldSelectors
       TypeFamilies
-  ghc-options: -Weverything -Wno-name-shadowing -Wno-missing-exported-signatures -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missed-specialisations -Wno-all-missed-specialisations -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-implicit-prelude -Wno-prepositive-qualified-module -Wno-missing-safe-haskell-mode -Wno-missing-kind-signatures -Wno-missing-role-annotations -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Weverything -Wno-name-shadowing -Wno-missing-exported-signatures -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missed-specialisations -Wno-all-missed-specialisations -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-implicit-prelude -Wno-prepositive-qualified-module -Wno-missing-safe-haskell-mode -Wno-missing-kind-signatures -Wno-missing-role-annotations
   build-tool-depends:
       tasty-discover:tasty-discover
   build-depends:
@@ -82,6 +82,8 @@ test-suite linear-locks-test
     , hspec-expectations-pretty-diff
     , linear-base
     , linear-locks
+    , list-t
+    , stm-containers
     , tasty
     , tasty-golden
     , tasty-hedgehog

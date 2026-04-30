@@ -3,7 +3,6 @@ default:
     just --list
 
 checks:
-    ./scripts/check_doctest.sh
     just doctest
     just test
     # Build with `-Werror`
@@ -11,12 +10,13 @@ checks:
 
 # To run with a file watcher: just test --file-watch
 test *ARGS:
-    stack test linear-locks:test:linear-locks-test {{ ARGS }}
+    stack test --fast linear-locks:test:linear-locks-test {{ ARGS }}
 
 doctest:
+    ./scripts/check_doctest.sh
     stack build doctest
-    stack exec doctest -- $(find src examples/src \( -name '*.lhs' -o -name '*.hs' \) -print) \
-        -XGHC2024 -XBlockArguments -XDuplicateRecordFields -XOverloadedRecordDot -XTypeFamilies
+    stack exec doctest -- $(find src test examples/src \( -name '*.lhs' -o -name '*.hs' \) -print) \
+        -XGHC2024 -XBlockArguments -XDuplicateRecordFields -XOverloadedRecordDot -XTypeFamilies -XQualifiedDo
 
 docs:
     stack haddock linear-locks:lib
