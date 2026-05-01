@@ -1,4 +1,4 @@
-{-# LANGUAGE LinearTypes #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE QualifiedDo #-}
 
 module Test.LinearLocks.MutexSetSpec where
@@ -11,7 +11,7 @@ import LinearLocks.Internal.MutexSet qualified as Internal
 import Prelude.Linear (Ur (..))
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
 import Test.Hspec.Expectations.Pretty (shouldNotBe, shouldThrow)
-import Test.Tasty.HUnit
+import "tasty-hunit-compat" Test.Tasty.HUnit
 
 -- | Doctests
 --
@@ -28,7 +28,7 @@ import Test.Tasty.HUnit
 -- >>>     L.pure (Ur (), key)
 -- >>> :}
 -- ...
--- ... • Cannot satisfy: 0 <= LinearLocks.Internal.MutexSet.MutexSetLevel
+-- ... • Cannot satisfy: 0 <= Internal.MutexSetLevel
 -- ...
 unit_read_mutex_set :: IO ()
 unit_read_mutex_set = do

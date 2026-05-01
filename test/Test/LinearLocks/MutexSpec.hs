@@ -1,4 +1,5 @@
 {-# LANGUAGE QualifiedDo #-}
+{-# LANGUAGE PackageImports #-}
 
 module Test.LinearLocks.MutexSpec where
 
@@ -16,7 +17,7 @@ import Prelude.Linear qualified as L hiding (IO)
 import StmContainers.Set qualified as StmSet
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
 import Test.Hspec.Expectations.Pretty (anyIOException, shouldThrow)
-import Test.Tasty.HUnit
+import "tasty-hunit-compat" Test.Tasty.HUnit
 
 -- | Doctests
 --
