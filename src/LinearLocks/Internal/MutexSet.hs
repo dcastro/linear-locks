@@ -104,7 +104,7 @@ class IsMutexSet set where
   -- E.g. `lockInOrder [1, 3, 2]` will lock the first mutex in the set, then the third, then the second.
   --
   -- Invariants:
-  --   * The indices must contain every index in the set, without duplicates.
+  --   * The indices must refer to every mutex in the set, without duplicates.
   lockInOrder :: VU.Vector MutexSetIndex -> set -> RIO (MutexGuardSet set)
 
 instance IsMutexSet (Mutex lvl a, Mutex lvl b) where

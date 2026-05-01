@@ -68,13 +68,9 @@ tests:
       - linear-base
       - tasty
       - tasty-hunit
-      - tasty-hspec
-      - tasty-hedgehog
-      - hedgehog
-      - hspec
       - hspec-expectations-pretty-diff
-      - tasty-golden
       - stm-containers
       - list-t
+      - vector
     build-tools:
       - tasty-discover:tasty-discover
