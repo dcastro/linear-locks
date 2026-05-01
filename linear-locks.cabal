@@ -84,6 +84,6 @@ test-suite linear-locks-test
     , list-t
     , stm-containers
     , tasty
-    , tasty-hunit
+    , tasty-hunit-compat
     , vector
   default-language: Haskell2010

@@ -25,29 +25,9 @@ packages:
   - .
   - examples
 
-# Uncomment to use GHC 9.14.1
-# resolver: ghc-9.14.1
-# extra-deps:
-#   - linear-base-0.6.0
-#   - hashable-1.5.1.0@sha256:140fc5adad166f7b527567cbd26ff481e8da4a66bdfc84be3ddf28dbeb66f275,5787
-#   - linear-generics-0.2.3@sha256:f8136522ef4075657518c91bab633e4e6d1e300298ca708e8639d8054e16abf3,6407
-#   - primitive-0.9.1.0@sha256:756b222c715bc6ef5ba81fa69cdbaa20c5c53beb6f16f174b8bacc93a6d239f0,3258
-#   - storable-tuple-0.1@sha256:75897946f56c019b863c9deaabf887eef603130a2db8f5458cda750a304b1887,2123
-#   - vector-0.13.2.0@sha256:9ac338c8da52d8a37db08434ca4480fef2cea4f9aac240f4f994bb467f5275b4,8804
-#   - base-orphans-0.9.4@sha256:001f2b3094b7a1b00e9fd5dcc519a62b8b147a1754bf550fa42601ff868e2b65,3241
-#   - random-1.3.1@sha256:0b4f649c3e78713b2ccad1535251ee34b148237fb2229d7058c2b1d9ccc324b8,6004
-#   - storable-record-0.0.7@sha256:41b5ef62468b978f163ba36d5c531ececdd19a66b2144ed0f9c1df3521378f1e,3899
-#   - tasty-1.5.3@sha256:6b5dda3f16db1274a0b3e6c4073ac57172a1e96b1dca05666c5cbd1183639412,2923
-#   - th-abstraction-0.7.2.0@sha256:380819d6e14645bf66af99b6ea3d3d4309c523c7d0ee376e0678042622f1c272,2181
-#   - utility-ht-0.0.17.2@sha256:ee925ec38eebd2d6f0ff2017d3f9fecde6e27c07f29c64b5b4f9a678ff5fd15e,3149
-#   - vector-stream-0.1.0.1@sha256:483be6df13c72169a917640589666f9fece7bea9fa13fcd41d052dab37ea289e,1642
-#   - QuickCheck-2.17.1.0@sha256:8f67f5f1acd1db9c8a247e60ad7fbece61850ee9973629e3f6ee7d277e97d0c1,8647
-#   - ansi-terminal-1.1.5@sha256:408d9232e5304efead718f96138d6d7eb2da608c6121c5c0dc6a71a833b14320,3327
-#   - optparse-applicative-0.19.0.0@sha256:0b47b3ff7eb4a855b5f7d401690365fc62a32057374927ce0d478b620996222d,5813
-#   - semigroups-0.20.1@sha256:022cbc683e493d9f3ef0632fd22c03a56334950dd15101717f4a3a4d72e4d390,1417
-#   - splitmix-0.1.3.2@sha256:a557cff65eed1f70f3a3b468423cd58e7a9a9564c5cc00c76a13de64dec9bcbd,3608
-#   - tagged-0.8.10@sha256:e9b97c98e9827981d62f37c5febf9e6bbb67acec92b8bd41fd9f7ace5eb31d32,2201
-#   - ansi-terminal-types-1.1.3@sha256:1d6061eceaf35a9ed269b81177dd4c8c60403a499526f7f68fdffa4ec7842e7f,1523
-#   - colour-2.3.6@sha256:ebdcbf15023958838a527e381ab3c3b1e99ed12d1b25efeb7feaa4ad8c37664a,2378
-#   - prettyprinter-1.7.1@sha256:9c43c9d8c3cd9f445596e5a2379574bba87f935a4d1fa41b5407ee3cf4edc743,6987
-#   - prettyprinter-ansi-terminal-1.1.3@sha256:b00f727b964cf13adff7acf575a71fa7e405f5240aff50b07f10df76ab89f8d3,2574
+extra-deps:
+  - tasty-hunit-compat-0.2.0.1
+
+allow-newer: true
+allow-newer-deps:
+  - tasty-hunit-compat

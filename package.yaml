@@ -67,7 +67,7 @@ tests:
       - linear-locks
       - linear-base
       - tasty
-      - tasty-hunit
+      - tasty-hunit-compat
       - hspec-expectations-pretty-diff
       - stm-containers
       - list-t
