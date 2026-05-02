@@ -1,31 +1,38 @@
-# linear-locks
+linear-locks
+===
 
-A port of [Surelock](https://notes.brooklynzelenka.com/Blog/Surelock) to
-Haskell.
+A port of [Surelock](https://notes.brooklynzelenka.com/Blog/Surelock) to Haskell.
 
-Some examples can be found in the [`Examples`
-module](examples/Examples.hs).
 
-## Getting started
+Some examples can be found in the [`Examples` module](examples/Examples.hs).
 
-We’ll need `QualifiedDo`:
+Getting started
+---
 
-``` haskell
+We'll need `QualifiedDo`:
+
+\begin{code}
 {-# LANGUAGE GHC2024 #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE QualifiedDo #-}
-```
+\end{code}
+
+
+\begin{code}%hidden
+module Readme where
+\end{code}
 
 And the following imports:
 
-``` haskell
+\begin{code}
 import Control.Functor.Linear qualified as Linear
 import Prelude.Linear (Ur (..))
 import LinearLocks
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
-```
+\end{code}
 
-``` haskell
+
+\begin{code}
 example1 :: IO ()
 example1 = do
   mutex <- mkMutex 0 "hello"
@@ -36,8 +43,9 @@ example1 = do
     mg <- writeGuard mg "world"
     releaseGuard mg
     Linear.pure (Ur (), key)
-```
+\end{code}
 
-## Roadmap
+Roadmap
+---
 
-- [ ] Allow backtracking of `MutexKey`’s level when a lock is released
+- [ ] Allow backtracking of `MutexKey`'s level when a lock is released

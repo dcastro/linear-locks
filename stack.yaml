@@ -24,6 +24,7 @@ resolver: lts-24.37
 packages:
   - .
   - examples
+  - docs
 
 extra-deps:
   - tasty-hunit-compat-0.2.0.1

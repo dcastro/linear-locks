@@ -18,5 +18,8 @@ doctest:
     stack exec doctest -- $(find src test examples/src \( -name '*.lhs' -o -name '*.hs' \) -print) \
         -XGHC2024 -XBlockArguments -XDuplicateRecordFields -XOverloadedRecordDot -XTypeFamilies -XQualifiedDo
 
-docs:
+haddock:
     stack haddock linear-locks:lib
+
+pandoc:
+    ./scripts/run_pandoc.sh

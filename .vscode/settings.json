@@ -1,0 +1,14 @@
+{
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        // Compile Literate Haskell files to markdown when they're saved to disk
+        //
+        // Requires having this VSCode extension installed:
+        // https://marketplace.visualstudio.com/items?itemName=emeraldwalk.RunOnSave
+        "match": "\\.(lhs)$",
+        "cmd": "./scripts/run_pandoc.sh"
+      }
+    ]
+  },
+}
