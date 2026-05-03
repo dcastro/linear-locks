@@ -5,6 +5,7 @@ license: BSD-3-Clause
 author: 'Diogo Castro'
 maintainer: 'dc@diogocastro.com'
 copyright: '2026 Diogo Castro'
+category: Concurrency, Parallelism, Mutable State
 
 extra-source-files:
   - README.md
@@ -17,7 +18,9 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description: Please see the README on GitHub at <https://github.com/dcastro/linear-locks#readme>
+description: |
+  `linear-locks` provides a `Mutex a` type that is statically guaranteed to not lead to deadlocks.
+  Please see the README on GitHub at <https://github.com/dcastro/linear-locks#readme>
 
 default-extensions:
   - GHC2024
