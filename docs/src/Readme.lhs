@@ -6,7 +6,7 @@ linear-locks
 The package provides a `Mutex a` type (based on `MVar a`) that is statically guaranteed to not lead to deadlocks.
 
 It achieves this by breaking one of the [Coffman conditions for deadlocks][Coffman]: the "circular wait" condition.
-Mutexes must be acquired in a consistent order.
+`linear-locks` ensures mutexes are always acquired in a consistent order.
 
 
 Getting started
@@ -116,9 +116,31 @@ The guard is also linearly typed, thus ensuring:
 Since the guard is linear, `readGuard` and `writeGuard` must consume the guard and return a new one.
 
 `readGuard configGuard` returns a `Ur Config`.
-`Ur` stands for "unrestricted", meaning the value is _not_ linear
+`Ur` is short for "unrestricted", meaning the value is _not_ linear
 and can be freely used as many times as needed.
 
+<h3>IO</h3>
+
+For the time being, in order to perform IO actions within a lock scope,
+we need to use `linear-base`'s `Internal.unsafeFromSystemIO`.
+
+Note, however, that this function is in fact safe.
+The [upcoming `linear-base` release][PR] will include public `fromSystemIO` and `liftSystemIO` functions.
+
+\begin{code}
+  lockScope \key -> Linear.do
+    (configGuard, key) <- lock key configMutex
+    (Ur config, configGuard) <- readGuard configGuard
+
+    Ur newVerbose <- Internal.unsafeFromSystemIO do
+      putStrLn $ "Verbose mode is: " <> show (verbose config)
+      putStrLn $ "Enter new verbose mode: "
+      Ur <$> readLn @Bool
+
+    configGuard <- writeGuard configGuard config { verbose = newVerbose }
+    releaseGuard configGuard
+    Linear.pure (Ur (), key)
+\end{code}
 
 Roadmap
 ---
@@ -133,3 +155,4 @@ Roadmap
  [RIO]: https://hackage-content.haskell.org/package/linear-base/docs/System-IO-Resource-Linear.html
  [Ur]: https://hackage-content.haskell.org/package/linear-base/docs/Data-Unrestricted-Linear.html#t:Ur
  [Coffman]: https://en.wikipedia.org/wiki/Deadlock_(computer_science)#Prevention
+ [PR]: https://github.com/tweag/linear-base/pull/505

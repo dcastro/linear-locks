@@ -16,8 +16,8 @@ statically guaranteed to not lead to deadlocks.
 
 It achieves this by breaking one of the [Coffman conditions for
 deadlocks](https://en.wikipedia.org/wiki/Deadlock_(computer_science)#Prevention):
-the “circular wait” condition. Mutexes must be acquired in a consistent
-order.
+the “circular wait” condition. `linear-locks` ensures mutexes are always
+acquired in a consistent order.
 
 ## Getting started
 
@@ -127,9 +127,36 @@ The guard is also linearly typed, thus ensuring:
 Since the guard is linear, `readGuard` and `writeGuard` must consume the
 guard and return a new one.
 
-`readGuard configGuard` returns a `Ur Config`. `Ur` stands for
+`readGuard configGuard` returns a `Ur Config`. `Ur` is short for
 “unrestricted”, meaning the value is *not* linear and can be freely used
 as many times as needed.
+
+<h3>
+
+IO
+</h3>
+
+For the time being, in order to perform IO actions within a lock scope,
+we need to use `linear-base`’s `Internal.unsafeFromSystemIO`.
+
+Note, however, that this function is in fact safe. The [upcoming
+`linear-base` release](https://github.com/tweag/linear-base/pull/505)
+will include public `fromSystemIO` and `liftSystemIO` functions.
+
+``` haskell
+  lockScope \key -> Linear.do
+    (configGuard, key) <- lock key configMutex
+    (Ur config, configGuard) <- readGuard configGuard
+
+    Ur newVerbose <- Internal.unsafeFromSystemIO do
+      putStrLn $ "Verbose mode is: " <> show (verbose config)
+      putStrLn $ "Enter new verbose mode: "
+      Ur <$> readLn @Bool
+
+    configGuard <- writeGuard configGuard config { verbose = newVerbose }
+    releaseGuard configGuard
+    Linear.pure (Ur (), key)
+```
 
 ## Roadmap
 
