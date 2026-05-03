@@ -120,30 +120,6 @@ Since the guard is linear, `readGuard` and `writeGuard` must consume the guard a
 `Ur` is short for "unrestricted", meaning the value is _not_ linear
 and can be freely used as many times as needed.
 
-<h3>IO</h3>
-
-For the time being, in order to perform IO actions within a lock scope,
-we need to use `linear-base`'s `Internal.unsafeFromSystemIO`.
-
-Note, however, that this function is in fact safe.
-The [upcoming `linear-base` release][PR] will include public `fromSystemIO` and `liftSystemIO` functions.
-
-\begin{code}
-  lockScope \key -> Linear.do
-    (configGuard, key) <- lock key configMutex
-    (Ur config, configGuard) <- readGuard configGuard
-
-    Ur newVerbose <- Internal.unsafeFromSystemIO do
-      putStrLn $ "Verbose mode is: " <> show (verbose config)
-      putStrLn $ "Enter new verbose mode: "
-      Ur <$> readLn @Bool
-
-    configGuard <- writeGuard configGuard config { verbose = newVerbose }
-    releaseGuard configGuard
-    Linear.pure (Ur (), key)
-\end{code}
-
-
 <h3>MutexSet</h3>
 
 Mutexes with the same level must be acquired simultaneously by adding them to a `MutexSet` and using `lockMany`.
@@ -170,6 +146,30 @@ Mutexes with the same level must be acquired simultaneously by adding them to a 
 To prevent deadlocks, mutexes in a set are always acquired in a deterministic order.
 Creating a set with `(alice, bob)` or `(bob, alice)` will always result
 in them being acquired in the same order.
+
+<h3>IO</h3>
+
+For the time being, in order to perform IO actions within a lock scope,
+we need to use `linear-base`'s `Internal.unsafeFromSystemIO`.
+
+Note, however, that this function is in fact safe.
+The [upcoming `linear-base` release][PR] will include public `fromSystemIO` and `liftSystemIO` functions.
+
+\begin{code}
+  lockScope \key -> Linear.do
+    (configGuard, key) <- lock key configMutex
+    (Ur config, configGuard) <- readGuard configGuard
+
+    Ur newVerbose <- Internal.unsafeFromSystemIO do
+      putStrLn $ "Verbose mode is: " <> show (verbose config)
+      putStrLn $ "Enter new verbose mode: "
+      Ur <$> readLn @Bool
+
+    configGuard <- writeGuard configGuard config { verbose = newVerbose }
+    releaseGuard configGuard
+    Linear.pure (Ur (), key)
+\end{code}
+
 
 Roadmap
 ---
