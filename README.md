@@ -158,6 +158,38 @@ will include public `fromSystemIO` and `liftSystemIO` functions.
     Linear.pure (Ur (), key)
 ```
 
+<h3>
+
+MutexSet
+</h3>
+
+Mutexes with the same level must be acquired simultaneously by adding
+them to a `MutexSet` and using `lockMany`.
+
+``` haskell
+  alice <- mkMutex 3 User { balance = 100 }
+  bob <- mkMutex 3 User { balance = 100 }
+
+  users <- mkMutexSet (alice, bob)
+
+  lockScope \key -> Linear.do
+    ((aliceGuard, bobGuard), key) <- lockMany key users
+    (Ur alice, aliceGuard) <- readGuard aliceGuard
+    (Ur bob, bobGuard) <- readGuard bobGuard
+
+    bobGuard <- writeGuard bobGuard bob { balance = balance bob + 10 }
+    aliceGuard <- writeGuard aliceGuard alice { balance = balance alice - 10 }
+
+    releaseGuard bobGuard
+    releaseGuard aliceGuard
+    Linear.pure (Ur (), key)
+```
+
+To prevent deadlocks, mutexes in a set are always acquired in a
+deterministic order. Creating a set with `(alice, bob)` or
+`(bob, alice)` will always result in them being acquired in the same
+order.
+
 ## Roadmap
 
 - [ ] Allow backtracking of `MutexKey`’s level when a lock is released

@@ -42,6 +42,7 @@ import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSyste
 -- Dummy types
 data Config = Config { verbose :: Bool }
 data DbConn = DbConn
+data User = User { balance :: Int }
 
 -- A dummy IO block where we can run the example code below
 example1 :: IO ()
@@ -141,6 +142,34 @@ The [upcoming `linear-base` release][PR] will include public `fromSystemIO` and 
     releaseGuard configGuard
     Linear.pure (Ur (), key)
 \end{code}
+
+
+<h3>MutexSet</h3>
+
+Mutexes with the same level must be acquired simultaneously by adding them to a `MutexSet` and using `lockMany`.
+
+\begin{code}
+  alice <- mkMutex 3 User { balance = 100 }
+  bob <- mkMutex 3 User { balance = 100 }
+
+  users <- mkMutexSet (alice, bob)
+
+  lockScope \key -> Linear.do
+    ((aliceGuard, bobGuard), key) <- lockMany key users
+    (Ur alice, aliceGuard) <- readGuard aliceGuard
+    (Ur bob, bobGuard) <- readGuard bobGuard
+
+    bobGuard <- writeGuard bobGuard bob { balance = balance bob + 10 }
+    aliceGuard <- writeGuard aliceGuard alice { balance = balance alice - 10 }
+
+    releaseGuard bobGuard
+    releaseGuard aliceGuard
+    Linear.pure (Ur (), key)
+\end{code}
+
+To prevent deadlocks, mutexes in a set are always acquired in a deterministic order.
+Creating a set with `(alice, bob)` or `(bob, alice)` will always result
+in them being acquired in the same order.
 
 Roadmap
 ---
