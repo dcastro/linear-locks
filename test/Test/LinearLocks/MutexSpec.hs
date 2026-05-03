@@ -1,5 +1,8 @@
-{-# LANGUAGE QualifiedDo #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE PackageImports #-}
+{-# LANGUAGE QualifiedDo #-}
+{-# LANGUAGE NoFieldSelectors #-}
 
 module Test.LinearLocks.MutexSpec where
 
