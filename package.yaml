@@ -26,9 +26,6 @@ default-extensions:
   - GHC2024
   - BlockArguments
   - StrictData
-  - DuplicateRecordFields
-  - OverloadedRecordDot
-  - NoFieldSelectors
   - TypeFamilies
 
 ghc-options:
