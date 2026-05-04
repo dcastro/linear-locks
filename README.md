@@ -19,6 +19,27 @@ deadlocks](https://en.wikipedia.org/wiki/Deadlock_(computer_science)#Prevention)
 the “circular wait” condition. `linear-locks` ensures mutexes are always
 acquired in a consistent order.
 
+## Motivation
+
+In Haskell, [`STM` is the holy
+grail](https://chrispenner.ca/posts/mutexes) for synchronizing access to
+multiple shared resources without risking deadlocks, and it should
+absolutely be the first thing on your mind when writing concurrent code.
+
+Still, `STM` does have its limitations:
+
+- You cannot run arbitrary `IO` actions within `STM` transactions, which
+  can be a roadblock if you need to interact with the outside world
+  while holding locks.
+- Due to its optimistic nature, scenarios with high contention can lead
+  to excessive transaction retries and livelocks.
+
+Locking primitives like `MVar`s solve both of these issues, but juggling
+multiple `MVar`s is a sure way to sooner or later hit a deadlock.
+
+Enter `linear-locks`: it provides a locking primitive `Mutex a` that is
+statically guaranteed to be free of deadlocks.
+
 ## Getting started
 
 `linear-locks` is meant to be used alongside the
@@ -89,9 +110,8 @@ same key to acquire 2 mutexes would be a type error.
 ```
 
 Notice how we had to use `Linear.do` (enabled by the `QualifiedDo`
-extension) and `Linear.pure` / `Linear.return` instead of `Prelude.pure`
-/ `return` to chain our actions together. This is because the lock scope
-action runs in
+extension) and `Linear.pure` instead of `Prelude.pure` to chain our
+actions together. This is because the lock scope action runs in
 [`RIO`](https://hackage-content.haskell.org/package/linear-base/docs/System-IO-Resource-Linear.html),
 and `RIO` does not implement `Prelude.Monad`; instead, it implements
 [`Linear.Monad`](https://hackage-content.haskell.org/package/linear-base/docs/Control-Functor-Linear.html#t:Monad)
