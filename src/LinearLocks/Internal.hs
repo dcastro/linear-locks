@@ -59,6 +59,11 @@ data Mutex (lvl :: Nat) a = Mutex
     id :: MutexId
   }
 
+-- | A t`MutexGuard` represents the ownership of a locked mutex.
+--
+-- It can be used to read/write the mutex while the lock is held.
+--
+-- It must be released with `releaseGuard`, after which the guard will be consumed and can no longer be used.
 data MutexGuard a = MutexGuard
   { resource :: RIO.Resource (MutexResource a),
     -- | The latest value set by the user.
@@ -129,6 +134,12 @@ releaseGuard (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.d
   release' (Internal.UnsafeResource key mr) L.do
     L.void L.$ L.fromSystemIO L.$ MVar.putMVar mr.var newValue
 
+-- | Creates a new mutex with the given initial value.
+--
+-- The @lvl@ parameter determines the order in which this mutex can be acquired relative to other mutexes.
+--
+-- It does not have to be unique, multiple mutexes can have the same level.
+-- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
 mkMutex :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
 mkMutex _lvl a = do
   var <- MVar.newMVar a
@@ -140,7 +151,7 @@ mkMutex _lvl a = do
       }
 
 -- | Creates a new lock scope with a key of level 0, and runs the given function with it.
---  The key can be used to lock mutexes with `lock`.
+--  The key can be used to lock mutexes with `lock` and `LinearLocks.lockMany`.
 -- The final key must be returned.
 --
 -- Will throw a t`NestedLocksScopeException` if a nested `lockScope` is created at runtime.
