@@ -19,8 +19,13 @@ doctest:
     stack exec doctest -- $(find src test examples/src \( -name '*.lhs' -o -name '*.hs' \) -print) \
         -XGHC2024 -XBlockArguments -XDuplicateRecordFields -XOverloadedRecordDot -XTypeFamilies -XQualifiedDo
 
-haddock:
-    stack haddock linear-locks:lib
+# Note: `stack haddock` fails to create hyperlinks to definitions in other packages (e.g. `Ur` from `linear-base`)
+
+haddock *ARGS:
+    cabal haddock lib:linear-locks {{ ARGS }}
+
+haddock-hackage *ARGS:
+    just haddock --haddock-for-hackage
 
 pandoc:
     ./scripts/run_pandoc.sh

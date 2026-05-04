@@ -124,4 +124,4 @@ unit_sorts_mutexes_deterministically = do
   mkMutexSet (m3, m2, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 1, 0]
   where
     sortedIndices :: forall set. MutexSet set -> VU.Vector Int
-    sortedIndices (Internal.MutexSet _ indices) = VU.map (\(Internal.MutexSetIndex i) -> i) indices
+    sortedIndices (Internal.MkMutexSet _ indices) = VU.map (\(Internal.MutexSetIndex i) -> i) indices

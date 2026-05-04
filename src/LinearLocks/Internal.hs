@@ -55,7 +55,7 @@ instance VU.Unbox MutexId
 
 data Mutex (lvl :: Nat) a = Mutex
   { var :: MVar a,
-    -- | The unique ID for this mutex. It's used to ensure `MutexSet`s don't contain duplicate mutexes, see 'mkMutexSet'.
+    -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.mkMutexSet'.
     id :: MutexId
   }
 
@@ -72,7 +72,7 @@ data MutexResource a = MutexResource
     -- This starts out as the same value that was in the MVar when the mutex was acquired.
     -- This ensures that, if an exception is thrown, the same value will be put back in and the MVar won't be modified.
     --
-    -- If no exceptions occur, `releaseGuard` will set `commitValue` to `MutexGuard.newValue` before releasing the guard.
+    -- If no exceptions occur, `releaseGuard` will set `commitValue` to @MutexGuard.newValue@ before releasing the guard.
     commitValue :: a,
     var :: MVar a
   }
@@ -143,7 +143,7 @@ mkMutex _lvl a = do
 --  The key can be used to lock mutexes with `lock`.
 -- The final key must be returned.
 --
--- Will throw a `NestedLocksScopeException` if a nested `lockScope` is created at runtime.
+-- Will throw a t`NestedLocksScopeException` if a nested `lockScope` is created at runtime.
 lockScope ::
   forall a lvl.
   -- Note: The key is linearly typed and must be returned; this prevents it from escaping the scope of the `lockScope` function.
@@ -220,7 +220,7 @@ mutexIdCounter =
 -- Utils
 ----------------------------------------------------------------------------
 
--- | Similar to 'RIO.release', except it uses a different release action than the one registered by 'unsafeAcquire'.
+-- | Similar to 'System.IO.Resource.Linear.release', except it uses a different release action than the one registered by 'System.IO.Resource.Linear.unsafeAcquire'.
 release' :: RIO.Resource a %1 -> L.IO () -> RIO ()
 release' (Internal.UnsafeResource key _) release = Internal.RIO (\st -> L.mask_ (releaseWith key st))
   where

@@ -38,11 +38,11 @@ deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexSetIndex
 
 instance VU.Unbox MutexSetIndex
 
--- | A set of mutexes with the same level that can be locked together with `lockMany`.
+-- | A set of mutexes with the same level that can be locked together with 'lockMany'.
 data MutexSet set where
-  MutexSet :: set -> VU.Vector MutexSetIndex -> MutexSet set
+  MkMutexSet :: set -> VU.Vector MutexSetIndex -> MutexSet set
 
--- | Creates a `MutexSet` from a set of mutexes.
+-- | Creates a 'MutexSet' from a set of mutexes.
 -- All mutexes must have the same level.
 --
 -- Mutexes in a 'MutexSet' can be locked simultaneously using 'lockMany'.
@@ -57,7 +57,7 @@ mkMutexSet :: forall m set. (IsMutexSet set, MonadFail m) => set -> m (MutexSet 
 mkMutexSet set =
   if hasDups
     then fail "MutexSet: duplicate mutexes are not allowed"
-    else pure $ MutexSet set sortedIndices
+    else pure $ MkMutexSet set sortedIndices
   where
     (hasDups, sortedIndices) = runST do
       idsAndIndices <- VU.thaw $ VU.fromList $ collectIds set `zip` [MutexSetIndex 0 ..]
@@ -92,7 +92,7 @@ lockMany ::
   MutexKey keyLvl %1 ->
   MutexSet set ->
   RIO (MutexGuardSet set, MutexKey (mutexLvl + 1))
-lockMany UnsafeMutexKey (MutexSet set indices) = L.do
+lockMany UnsafeMutexKey (MkMutexSet set indices) = L.do
   guards <- lockInOrder indices set
   L.pure (guards, UnsafeMutexKey)
 
@@ -316,7 +316,7 @@ modifyM f =
   L.StateT \s -> L.do
     f s L.<&> \s' -> ((), s')
 
--- | A version of `VU.forM_` that runs in a linear monad.
+-- | A version of 'Data.Vector.Unboxed.forM_' that runs in a linear monad.
 forM_' :: (VU.Unbox a, L.Monad m) => VU.Vector a -> (a -> m ()) -> m ()
 forM_' vec action = go 0
   where
