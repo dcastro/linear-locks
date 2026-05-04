@@ -22,8 +22,9 @@ description: |
   `linear-locks` provides a `Mutex a` type that is statically guaranteed to not lead to deadlocks.
   Please see the README on GitHub at <https://github.com/dcastro/linear-locks#readme>
 
+language: GHC2024
+
 default-extensions:
-  - GHC2024
   - BlockArguments
   - StrictData
   - TypeFamilies

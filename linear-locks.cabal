@@ -37,7 +37,6 @@ library
   hs-source-dirs:
       src
   default-extensions:
-      GHC2024
       BlockArguments
       StrictData
       TypeFamilies
@@ -51,7 +50,7 @@ library
     , stm-containers
     , vector
     , vector-algorithms
-  default-language: Haskell2010
+  default-language: GHC2024
 
 test-suite linear-locks-test
   type: exitcode-stdio-1.0
@@ -65,7 +64,6 @@ test-suite linear-locks-test
   hs-source-dirs:
       test
   default-extensions:
-      GHC2024
       BlockArguments
       StrictData
       TypeFamilies
@@ -82,4 +80,4 @@ test-suite linear-locks-test
     , tasty
     , tasty-hunit-compat
     , vector
-  default-language: Haskell2010
+  default-language: GHC2024
