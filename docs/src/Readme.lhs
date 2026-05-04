@@ -99,7 +99,7 @@ Every time we acquire a mutex, the key's level increases. Acquiring `Mutex 0 Con
 \end{code}
 
 Acquiring mutexes in the wrong order (e.g. trying to acquire a mutex of level 0 with a key of level 2) would be a type error.
-This ensures locks are always acquired in order of increasing level, preventing circular waits and thus deadlocks.
+This ensures mutexes are always acquired in order of increasing level, preventing circular waits and thus deadlocks.
 
 The key is linearly typed, it must be consumed _exactly once_.
 Using the same key to acquire 2 mutexes would be a type error.
@@ -110,7 +110,7 @@ This ensures values bound by `>>=` must be consumed exactly once.
 
 <h3>MutexGuard</h3>
 
-When we acquire a lock, we get back a `MutexGuard a` that represents our ownership of the lock.
+When we acquire a mutex, we get back a `MutexGuard a` that represents our ownership of the lock.
 We can freely read from / write to it while the lock is held.
 
 The guard is also linearly typed, thus ensuring:
