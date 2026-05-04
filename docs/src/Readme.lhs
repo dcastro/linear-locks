@@ -79,13 +79,8 @@ We can then enter a "lock scope".
 We're given a `MutexKey lvl` that we can use to acquire mutexes.
 The key starts off with level 0 (`MutexKey 0`) and it can be used to acquire any mutex with level 0 or above.
 
-Every time we acquire a mutex, the key's level increases. Acquiring `Mutex 0 Config` consumes our `MutexKey 0` and gives us a `MutexKey 1`. Acquiring `Mutex 1 DbConn` then gives us a `MutexKey 2`.
+Every time we acquire a mutex, the key's level increases. Acquiring `Mutex 0 Config` consumes our `MutexKey 0` and gives us a `MutexKey 1` back. Acquiring `Mutex 1 DbConn` then gives us a `MutexKey 2`.
 
-Acquiring mutexes in the wrong order (e.g. trying to acquire a mutex of level 0 with a key of level 2) would be a type error.
-This ensures locks are always acquired in order of increasing level, preventing circular waits and thus deadlocks.
-
-The key is linearly typed, it must be consumed _exactly once_.
-Using the same key to acquire 2 mutexes would be a type error.
 
 \begin{code}
   lockScope \key -> Linear.do
@@ -102,6 +97,12 @@ Using the same key to acquire 2 mutexes would be a type error.
     releaseGuard dbGuard
     Linear.pure (Ur (), key)
 \end{code}
+
+Acquiring mutexes in the wrong order (e.g. trying to acquire a mutex of level 0 with a key of level 2) would be a type error.
+This ensures locks are always acquired in order of increasing level, preventing circular waits and thus deadlocks.
+
+The key is linearly typed, it must be consumed _exactly once_.
+Using the same key to acquire 2 mutexes would be a type error.
 
 Notice how we had to use `Linear.do` (enabled by the `QualifiedDo` extension) and `Linear.pure` instead of `Prelude.pure` to chain our actions together.
 This is because the lock scope action runs in [`RIO`][RIO], and `RIO` does not implement `Prelude.Monad`; instead, it implements [`Linear.Monad`][Linear.Monad] from `linear-base`.
