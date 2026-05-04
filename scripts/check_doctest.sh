@@ -70,17 +70,18 @@ while IFS= read -r -d '' file; do
     if (( prev_line_number >= 1 )); then
       prev_line=$(sed -n "${prev_line_number}p" "$file")
 
-      # The pattern `-- >>>` is allowed if it's preceded by a line with `$setup`.
-      if [[ $prev_line =~ ^[[:space:]]*--[[:space:]]*\$setup[[:space:]]*$ ]]; then
-        continue
-      fi
-
       # Allow `-- >>>` when it belongs to a contiguous Haddock comment block
-      # that started with `-- |`.
+      # that started with `-- |` or `-- $setup`.
       scan_line_number=$prev_line_number
+      in_setup_block=false
       in_haddock_block=false
       while (( scan_line_number >= 1 )); do
         scan_line=$(sed -n "${scan_line_number}p" "$file")
+
+        if [[ $scan_line =~ ^[[:space:]]*--[[:space:]]*\$setup[[:space:]]*$ ]]; then
+          in_setup_block=true
+          break
+        fi
 
         if [[ $scan_line =~ ^[[:space:]]*--[[:space:]]*\| ]]; then
           in_haddock_block=true
@@ -96,6 +97,10 @@ while IFS= read -r -d '' file; do
 
         break
       done
+
+      if [[ $in_setup_block == true ]]; then
+        continue
+      fi
 
       if [[ $in_haddock_block == true ]]; then
         continue
