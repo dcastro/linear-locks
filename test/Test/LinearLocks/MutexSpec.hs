@@ -15,7 +15,6 @@ import GHC.Conc (atomically)
 import LinearLocks
 import LinearLocks.Internal qualified as Internal
 import LinearLocks.Internal.Mutex qualified as Internal
-import LinearLocks.Mutex (lock)
 import LinearLocks.Mutex qualified as Mutex
 import ListT qualified
 import Prelude.Linear (Ur (..))

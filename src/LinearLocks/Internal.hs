@@ -21,9 +21,10 @@ import Data.Vector.Generic.Mutable qualified as VGM
 import Data.Vector.Primitive qualified as VP
 import Data.Vector.Unboxed qualified as VU
 import Focus qualified
+import GHC.Base (Type)
 import GHC.Conc (atomically)
 import GHC.IO (unsafePerformIO)
-import GHC.TypeLits (Nat)
+import GHC.TypeLits (Nat, type (+), type (<=))
 import Prelude.Linear (Ur (..))
 import StmContainers.Set qualified as StmSet
 import System.IO.Resource.Linear (RIO)
@@ -112,6 +113,26 @@ data NestedLocksScopeException = NestedLocksScopeException
 
 instance Exception NestedLocksScopeException where
   displayException NestedLocksScopeException = "Nested lock scopes are not allowed"
+
+-- | Acquire a mutex.
+-- Consumes the key and return a new key (with an increased level).
+lock ::
+  forall keyLvl lockable.
+  (Lockable lockable) =>
+  (keyLvl <= Level lockable) =>
+  MutexKey keyLvl %1 ->
+  lockable ->
+  RIO (Guard lockable, MutexKey (Level lockable + 1))
+lock UnsafeMutexKey m = L.do
+  guard <- unsafeLock m
+  L.pure (guard, UnsafeMutexKey)
+
+class Lockable lockable where
+  type Guard lockable :: Type
+  type Level lockable :: Nat
+
+  -- | This is marked as unsafe because it does not consume a `MutexKey`.
+  unsafeLock :: lockable -> RIO (Guard lockable)
 
 ----------------------------------------------------------------------------
 -- Global variables

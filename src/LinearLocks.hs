@@ -45,6 +45,8 @@ module LinearLocks
     lockScope,
     MutexKey,
     NestedLocksScopeException (..),
+    lock,
+    Lockable (), -- Note: do not export the typeclass members
   )
 where
 

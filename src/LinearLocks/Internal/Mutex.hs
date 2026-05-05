@@ -16,7 +16,7 @@ import Control.Concurrent qualified as MVar
 import Control.Functor.Linear qualified as L
 import Data.Atomics.Counter qualified as Atomic
 import Data.IntMap.Strict qualified as IntMap
-import GHC.TypeLits (Nat, type (+), type (<=))
+import GHC.TypeLits (Nat)
 import LinearLocks.Internal
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
@@ -60,37 +60,28 @@ data MutexResource a = MutexResource
     var :: MVar a
   }
 
--- | Acquire a mutex.
--- Consumes the key and return a new key (with an increased level).
-lock ::
-  forall a keyLvl mutexLvl.
-  (keyLvl <= mutexLvl) =>
-  MutexKey keyLvl %1 ->
-  Mutex mutexLvl a ->
-  RIO (MutexGuard a, MutexKey (mutexLvl + 1))
-lock UnsafeMutexKey m = L.do
-  guard <- unsafeLock m
-  L.pure (guard, UnsafeMutexKey)
+instance Lockable (Mutex lvl a) where
+  type Guard (Mutex lvl a) = MutexGuard a
+  type Level (Mutex lvl a) = lvl
 
--- | This is marked as unsafe because it does not consume a `MutexKey`.
-unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
-unsafeLock m = L.do
-  -- Note: we have to match on `UnsafeResource` so we can extract the `guard.commitValue`
-  Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
-  L.pure
-    MutexGuard
-      { resource = Internal.UnsafeResource key guard,
-        newValue = Ur guard.commitValue
-      }
-  where
-    acq :: L.IO (Ur (MutexResource a))
-    acq = L.do
-      Ur a <- L.fromSystemIOU L.$ MVar.takeMVar m.var
-      L.pure (Ur (MutexResource {commitValue = a, var = m.var}))
+  unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
+  unsafeLock m = L.do
+    -- Note: we have to match on `UnsafeResource` so we can extract the `guard.commitValue`
+    Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
+    L.pure
+      MutexGuard
+        { resource = Internal.UnsafeResource key guard,
+          newValue = Ur guard.commitValue
+        }
+    where
+      acq :: L.IO (Ur (MutexResource a))
+      acq = L.do
+        Ur a <- L.fromSystemIOU L.$ MVar.takeMVar m.var
+        L.pure (Ur (MutexResource {commitValue = a, var = m.var}))
 
-    rel :: MutexResource a -> L.IO ()
-    rel (MutexResource commitValue var) =
-      L.void L.$ L.fromSystemIO L.$ MVar.putMVar var commitValue
+      rel :: MutexResource a -> L.IO ()
+      rel (MutexResource commitValue var) =
+        L.void L.$ L.fromSystemIO L.$ MVar.putMVar var commitValue
 
 read :: MutexGuard a %1 -> RIO (Ur a, MutexGuard a)
 read (MutexGuard resource (Ur newValue)) =
