@@ -13,10 +13,10 @@ import Control.Functor.Linear qualified as L
 import Data.Function ((&))
 import GHC.Conc (atomically)
 import LinearLocks
-import LinearLocks.Mutex (lock)
-import LinearLocks.Mutex qualified as Mutex
 import LinearLocks.Internal qualified as Internal
 import LinearLocks.Internal.Mutex qualified as Internal
+import LinearLocks.Mutex (lock)
+import LinearLocks.Mutex qualified as Mutex
 import ListT qualified
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
@@ -30,8 +30,8 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>> :{
 -- >>> unit_mutexes_cannot_be_locked_in_wrong_order :: IO ()
 -- >>> unit_mutexes_cannot_be_locked_in_wrong_order = do
--- >>>   m1 <- Mutex.mkMutex 2 "hello"
--- >>>   m2 <- Mutex.mkMutex 4 "world"
+-- >>>   m1 <- Mutex.new 2 "hello"
+-- >>>   m2 <- Mutex.new 4 "world"
 -- >>>   lockScope \key -> L.do
 -- >>>     (mg2, key) <- lock key m2
 -- >>>     (mg1, key) <- lock key m1
@@ -45,7 +45,7 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- ...
 unit_read_mutex :: IO ()
 unit_read_mutex = do
-  mutex <- Mutex.mkMutex 0 "hello"
+  mutex <- Mutex.new 0 "hello"
   str <- lockScope \key -> L.do
     (mg, key) <- lock key mutex
     (Ur str, mg) <- Mutex.read mg
@@ -55,7 +55,7 @@ unit_read_mutex = do
 
 unit_write_mutex :: IO ()
 unit_write_mutex = do
-  mutex <- Mutex.mkMutex 0 "hello"
+  mutex <- Mutex.new 0 "hello"
   lockScope \key -> L.do
     (mg, key) <- lock key mutex
     mg <- Mutex.write mg "world"
@@ -75,7 +75,7 @@ unit_write_mutex = do
 
 unit_realeases_mvar :: IO ()
 unit_realeases_mvar = do
-  mutex <- Mutex.mkMutex 0 "hello"
+  mutex <- Mutex.new 0 "hello"
   lockScope \key -> L.do
     (mg, key) <- lock key mutex
 
@@ -149,7 +149,7 @@ unit_updates_thread_ids = do
 
 unit_rolls_back_on_exception :: IO ()
 unit_rolls_back_on_exception = do
-  mutex <- Mutex.mkMutex 0 "hello"
+  mutex <- Mutex.new 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
     (mg, key) <- lock key mutex
     mg <- Mutex.write mg "world"
@@ -163,7 +163,7 @@ unit_rolls_back_on_exception = do
 
 unit_rolls_back_on_imprecise_exception :: IO ()
 unit_rolls_back_on_imprecise_exception = do
-  mutex <- Mutex.mkMutex 0 "hello"
+  mutex <- Mutex.new 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
     (mg, key) <- lock key mutex
     mg <- Mutex.write mg "world"

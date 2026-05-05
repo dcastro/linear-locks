@@ -19,7 +19,7 @@ import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSyste
 -- hello
 example1 :: IO ()
 example1 = do
-  mutex <- Mutex.mkMutex 0 "hello"
+  mutex <- Mutex.new 0 "hello"
   lockScope \key -> Linear.do
     (mg, key) <- lock key mutex
     (Ur str, mg) <- Mutex.read mg
@@ -31,8 +31,8 @@ example1 = do
 -- This doesn't compile, we can't acquire locks out of order
 -- example2 :: IO ()
 -- example2 = do
---   m1 <- Mutex.mkMutex 0 "hello"
---   m2 <- Mutex.mkMutex 1 "world"
+--   m1 <- Mutex.new 0 "hello"
+--   m2 <- Mutex.new 1 "world"
 --   lockScope \key -> Linear.do
 --     (mg2, key) <- lock key m2
 --     (mg1, key) <- lock key m1
@@ -46,8 +46,8 @@ example1 = do
 -- hello world
 example3 :: IO ()
 example3 = do
-  m1 <- Mutex.mkMutex 0 "hello"
-  m2 <- Mutex.mkMutex 1 "world"
+  m1 <- Mutex.new 0 "hello"
+  m2 <- Mutex.new 1 "world"
   lockScope \key -> Linear.do
     (mg1, key) <- lock key m1
     (mg2, key) <- lock key m2
@@ -68,8 +68,8 @@ example3 = do
 -- *** Exception: NestedLocksScopeException
 example4 :: IO ()
 example4 = do
-  m1 <- Mutex.mkMutex 0 "hello"
-  m2 <- Mutex.mkMutex 1 "world"
+  m1 <- Mutex.new 0 "hello"
+  m2 <- Mutex.new 1 "world"
   lockScope \key -> Linear.do
     (mg2, key) <- lock key m2
 
@@ -91,8 +91,8 @@ example4 = do
 -- hello world
 example5 :: IO ()
 example5 = do
-  m1 <- Mutex.mkMutex 0 3
-  m2 <- Mutex.mkMutex 0 "hello world"
+  m1 <- Mutex.new 0 3
+  m2 <- Mutex.new 0 "hello world"
   mutexSet <- mkMutexSet (m1, m2)
   lockScope \key -> Linear.do
     ((mg1, mg2), key) <- lockMany key mutexSet

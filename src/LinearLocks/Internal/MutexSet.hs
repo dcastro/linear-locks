@@ -50,9 +50,9 @@ data MutexSet set where
 --
 -- Fails if the set contains duplicate mutexes.
 --
--- >>> m1 <- mkMutex 1 "a"
--- >>> m2 <- mkMutex 1 "b"
--- >>> m3 <- mkMutex 1 "c"
+-- >>> m1 <- new 1 "a"
+-- >>> m2 <- new 1 "b"
+-- >>> m3 <- new 1 "c"
 -- >>> set <- mkMutexSet (m1, m2, m3)
 mkMutexSet :: forall m set. (IsMutexSet set, MonadFail m) => set -> m (MutexSet set)
 mkMutexSet set =

@@ -71,10 +71,10 @@ Each mutex is assigned a “level” at compile-time.
 
 ``` haskell
   -- `Mutex 0 Config`
-  configMutex <- Mutex.mkMutex 0 Config { verbose = True }
+  configMutex <- Mutex.new 0 Config { verbose = True }
 
   -- `Mutex 1 DbConn`
-  dbMutex <- Mutex.mkMutex 1 DbConn {}
+  dbMutex <- Mutex.new 1 DbConn {}
 ```
 
 We can then enter a “lock scope”.
@@ -162,8 +162,8 @@ Mutexes with the same level must be acquired simultaneously by adding
 them to a `MutexSet` and using `lockMany`.
 
 ``` haskell
-  alice <- Mutex.mkMutex 3 User { balance = 100 }
-  bob <- Mutex.mkMutex 3 User { balance = 100 }
+  alice <- Mutex.new 3 User { balance = 100 }
+  bob <- Mutex.new 3 User { balance = 100 }
 
   users <- mkMutexSet (alice, bob)
 

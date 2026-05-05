@@ -23,8 +23,8 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>> :{
 -- >>> unit_mutexes_in_a_set_must_have_the_same_level :: IO ()
 -- >>> unit_mutexes_in_a_set_must_have_the_same_level = do
--- >>>   m1 <- Mutex.mkMutex 2 "hello"
--- >>>   m2 <- Mutex.mkMutex 3 "world"
+-- >>>   m1 <- Mutex.new 2 "hello"
+-- >>>   m2 <- Mutex.new 3 "world"
 -- >>>   set <- mkMutexSet (m1, m2)
 -- >>>   lockScope \key -> L.do
 -- >>>     ((mg1, mg2), key) <- lockMany key set
@@ -37,9 +37,9 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- ...
 unit_read_mutex_set :: IO ()
 unit_read_mutex_set = do
-  m1 <- Mutex.mkMutex 0 "m1"
-  m2 <- Mutex.mkMutex 0 "m2"
-  m3 <- Mutex.mkMutex 0 "m3"
+  m1 <- Mutex.new 0 "m1"
+  m2 <- Mutex.new 0 "m2"
+  m3 <- Mutex.new 0 "m3"
   set <- mkMutexSet (m1, m2, m3)
 
   lockScope \key -> L.do
@@ -61,9 +61,9 @@ unit_read_mutex_set = do
 
 unit_write_mutex_set :: IO ()
 unit_write_mutex_set = do
-  m1 <- Mutex.mkMutex 0 "m1"
-  m2 <- Mutex.mkMutex 0 "m2"
-  m3 <- Mutex.mkMutex 0 "m3"
+  m1 <- Mutex.new 0 "m1"
+  m2 <- Mutex.new 0 "m2"
+  m3 <- Mutex.new 0 "m3"
   set <- mkMutexSet (m3, m2, m1)
 
   lockScope \key -> L.do
@@ -97,9 +97,9 @@ unit_write_mutex_set = do
 
 unit_assigns_unique_mutex_ids :: IO ()
 unit_assigns_unique_mutex_ids = do
-  m1 <- Mutex.mkMutex 0 ""
-  m2 <- Mutex.mkMutex 0 ""
-  m3 <- Mutex.mkMutex 0 ""
+  m1 <- Mutex.new 0 ""
+  m2 <- Mutex.new 0 ""
+  m3 <- Mutex.new 0 ""
 
   m1.id `shouldNotBe` m2.id
   m2.id `shouldNotBe` m3.id
@@ -107,16 +107,16 @@ unit_assigns_unique_mutex_ids = do
 
 unit_throws_when_mutex_set_contains_duplicates :: IO ()
 unit_throws_when_mutex_set_contains_duplicates = do
-  m1 <- Mutex.mkMutex 0 ""
-  m2 <- Mutex.mkMutex 0 ""
+  m1 <- Mutex.new 0 ""
+  m2 <- Mutex.new 0 ""
 
   mkMutexSet (m1, m2, m1) `shouldThrow` \(err :: IOError) -> err == userError "MutexSet: duplicate mutexes are not allowed"
 
 unit_sorts_mutexes_deterministically :: IO ()
 unit_sorts_mutexes_deterministically = do
-  m1 <- Mutex.mkMutex 0 ""
-  m2 <- Mutex.mkMutex 0 ""
-  m3 <- Mutex.mkMutex 0 ""
+  m1 <- Mutex.new 0 ""
+  m2 <- Mutex.new 0 ""
+  m3 <- Mutex.new 0 ""
 
   mkMutexSet (m1, m2, m3) >>= \set -> sortedIndices set @?= VU.fromList [0, 1, 2]
   mkMutexSet (m2, m1, m3) >>= \set -> sortedIndices set @?= VU.fromList [1, 0, 2]

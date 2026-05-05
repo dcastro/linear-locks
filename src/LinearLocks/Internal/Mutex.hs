@@ -117,8 +117,8 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
 --
 -- It does not have to be unique, multiple mutexes can have the same level.
 -- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
-mkMutex :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
-mkMutex _lvl a = do
+new :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
+new _lvl a = do
   var <- MVar.newMVar a
   newId <- Atomic.incrCounter 1 mutexIdCounter
   pure

@@ -15,8 +15,8 @@ It is meant to be used with @QualifiedDo@ and these imports:
 example :: IO ()
 example = do
   -- Create mutexes with a chosen level
-  configMutex <- mkMutex 0 Config { verbose = True }
-  dbMutex <- mkMutex 1 DbConn {}
+  configMutex <- new 0 Config { verbose = True }
+  dbMutex <- new 1 DbConn {}
   --
   -- Enter a lockscope
   lockScope \key -> Linear.do

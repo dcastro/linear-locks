@@ -1,6 +1,6 @@
 module LinearLocks.Mutex
   ( -- * Mutex
-    mkMutex,
+    new,
     Mutex,
     lock,
 

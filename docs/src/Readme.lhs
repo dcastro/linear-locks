@@ -70,10 +70,10 @@ Each mutex is assigned a "level" at compile-time.
 
 \begin{code}
   -- `Mutex 0 Config`
-  configMutex <- Mutex.mkMutex 0 Config { verbose = True }
+  configMutex <- Mutex.new 0 Config { verbose = True }
 
   -- `Mutex 1 DbConn`
-  dbMutex <- Mutex.mkMutex 1 DbConn {}
+  dbMutex <- Mutex.new 1 DbConn {}
 \end{code}
 
 We can then enter a "lock scope".
@@ -143,8 +143,8 @@ and can be freely used as many times as needed.
 Mutexes with the same level must be acquired simultaneously by adding them to a `MutexSet` and using `lockMany`.
 
 \begin{code}
-  alice <- Mutex.mkMutex 3 User { balance = 100 }
-  bob <- Mutex.mkMutex 3 User { balance = 100 }
+  alice <- Mutex.new 3 User { balance = 100 }
+  bob <- Mutex.new 3 User { balance = 100 }
 
   users <- mkMutexSet (alice, bob)
 
