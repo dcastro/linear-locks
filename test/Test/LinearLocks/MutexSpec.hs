@@ -14,6 +14,7 @@ import Data.Function ((&))
 import GHC.Conc (atomically)
 import LinearLocks
 import LinearLocks.Internal qualified as Internal
+import LinearLocks.Internal.Mutex qualified as Internal
 import ListT qualified
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)

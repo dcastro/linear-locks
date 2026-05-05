@@ -21,6 +21,7 @@ import Data.Vector.Unboxed qualified as VU
 import Data.Vector.Unboxed.Mutable qualified as VUM
 import GHC.TypeLits (Nat, type (+), type (<=))
 import LinearLocks.Internal
+import LinearLocks.Internal.Mutex
 import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear.Internal qualified as Internal
 

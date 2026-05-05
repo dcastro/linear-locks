@@ -11,13 +11,11 @@
 
 module LinearLocks.Internal where
 
-import Control.Concurrent (MVar, ThreadId, myThreadId)
-import Control.Concurrent qualified as MVar
+import Control.Concurrent (ThreadId, myThreadId)
 import Control.Exception (Exception (..), bracket_, throw)
 import Control.Functor.Linear qualified as L
 import Data.Atomics.Counter (AtomicCounter)
 import Data.Atomics.Counter qualified as Atomic
-import Data.IntMap.Strict qualified as IntMap
 import Data.Vector.Generic qualified as VG
 import Data.Vector.Generic.Mutable qualified as VGM
 import Data.Vector.Primitive qualified as VP
@@ -25,14 +23,11 @@ import Data.Vector.Unboxed qualified as VU
 import Focus qualified
 import GHC.Conc (atomically)
 import GHC.IO (unsafePerformIO)
-import GHC.TypeLits (Nat, type (+), type (<=))
+import GHC.TypeLits (Nat)
 import Prelude.Linear (Ur (..))
-import Prelude.Linear qualified as L hiding (IO)
 import StmContainers.Set qualified as StmSet
-import System.IO.Linear qualified as L
 import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear qualified as RIO
-import System.IO.Resource.Linear.Internal qualified as Internal
 
 -- | A key used to acquire locks.
 -- A key of level @n@ can only acquire locks of level @n@ or higher.
@@ -58,108 +53,6 @@ deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector MutexId
 deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexId
 
 instance VU.Unbox MutexId
-
-data Mutex (lvl :: Nat) a = Mutex
-  { var :: MVar a,
-    -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.mkMutexSet'.
-    id :: MutexId
-  }
-
--- | A t`MutexGuard` represents the ownership of a locked mutex.
---
--- It can be used to read/write the mutex while the lock is held.
---
--- It must be released with `releaseGuard`, after which the guard will be consumed and can no longer be used.
-data MutexGuard a = MutexGuard
-  { resource :: RIO.Resource (MutexResource a),
-    -- | The latest value set by the user.
-    -- This will be comitted to the MVar when the guard is released.
-    newValue :: Ur a
-  }
-
-data MutexResource a = MutexResource
-  { -- | The value to put back into the MVar when the mutex guard is released.
-    --
-    -- This starts out as the same value that was in the MVar when the mutex was acquired.
-    -- This ensures that, if an exception is thrown, the same value will be put back in and the MVar won't be modified.
-    --
-    -- If no exceptions occur, `releaseGuard` will set `commitValue` to @MutexGuard.newValue@ before releasing the guard.
-    commitValue :: a,
-    var :: MVar a
-  }
-
--- | Acquire a mutex.
--- Consumes the key and return a new key (with an increased level).
-lock ::
-  forall a keyLvl mutexLvl.
-  (keyLvl <= mutexLvl) =>
-  MutexKey keyLvl %1 ->
-  Mutex mutexLvl a ->
-  RIO (MutexGuard a, MutexKey (mutexLvl + 1))
-lock UnsafeMutexKey m = L.do
-  guard <- unsafeLock m
-  L.pure (guard, UnsafeMutexKey)
-
--- | This is marked as unsafe because it does not consume a `MutexKey`.
-unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
-unsafeLock m = L.do
-  -- Note: we have to match on `UnsafeResource` so we can extract the `guard.commitValue`
-  Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
-  L.pure
-    MutexGuard
-      { resource = Internal.UnsafeResource key guard,
-        newValue = Ur guard.commitValue
-      }
-  where
-    acq :: L.IO (Ur (MutexResource a))
-    acq = L.do
-      Ur a <- L.fromSystemIOU L.$ MVar.takeMVar m.var
-      L.pure (Ur (MutexResource {commitValue = a, var = m.var}))
-
-    rel :: MutexResource a -> L.IO ()
-    rel (MutexResource commitValue var) =
-      L.void L.$ L.fromSystemIO L.$ MVar.putMVar var commitValue
-
-readGuard :: MutexGuard a %1 -> RIO (Ur a, MutexGuard a)
-readGuard (MutexGuard resource (Ur newValue)) =
-  L.pure (Ur newValue, MutexGuard {resource, newValue = Ur newValue})
-
--- | Writes a new value to the mutex, which will be committed when the guard is released.
---
--- If an exception is thrown after `writeGuard` but before `releaseGuard`,
--- the mutex will be rolled back to its original state.
-writeGuard :: MutexGuard a %1 -> a -> RIO (MutexGuard a)
-writeGuard (MutexGuard resource (Ur _)) newValue =
-  L.pure (MutexGuard {resource, newValue = Ur newValue})
-
--- | Releases a mutex and commits the latest value set by `writeGuard`.
-releaseGuard :: MutexGuard a %1 -> RIO ()
-releaseGuard (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
-  -- Note: the resource was initially registered with a release action that puts the original value back into the MVar.
-  -- That release action should be run if an exception is thrown before `releaseGuard` is called,
-  -- which ensures the MVar will "rollback" to its original state.
-  --
-  -- However, if `releaseGuard` is called explicitly by the user,
-  -- we want to update the release action to put `newValue` back into the MVar instead.
-  -- Therefore, we must call `release'` with a _new release action_ that puts `newValue` into the MVar.
-  release' (Internal.UnsafeResource key mr) L.do
-    L.void L.$ L.fromSystemIO L.$ MVar.putMVar mr.var newValue
-
--- | Creates a new mutex with the given initial value.
---
--- The @lvl@ parameter determines the order in which this mutex can be acquired relative to other mutexes.
---
--- It does not have to be unique, multiple mutexes can have the same level.
--- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
-mkMutex :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
-mkMutex _lvl a = do
-  var <- MVar.newMVar a
-  newId <- Atomic.incrCounter 1 mutexIdCounter
-  pure
-    Mutex
-      { var = var,
-        id = MutexId newId
-      }
 
 -- | Creates a new lock scope with a key of level 0, and runs the given function with it.
 --  The key can be used to lock mutexes with `lock` and `LinearLocks.lockMany`.
@@ -237,16 +130,3 @@ lockScopes =
 mutexIdCounter :: AtomicCounter
 mutexIdCounter =
   unsafePerformIO $ Atomic.newCounter 0
-
-----------------------------------------------------------------------------
--- Utils
-----------------------------------------------------------------------------
-
--- | Similar to 'System.IO.Resource.Linear.release', except it uses a different release action than the one registered by 'System.IO.Resource.Linear.unsafeAcquire'.
-release' :: RIO.Resource a %1 -> L.IO () -> RIO ()
-release' (Internal.UnsafeResource key _) release = Internal.RIO (\st -> L.mask_ (releaseWith key st))
-  where
-    releaseWith key rrm = L.do
-      Ur (Internal.ReleaseMap releaseMap) <- L.readIORef rrm
-      () <- release
-      L.writeIORef rrm (Internal.ReleaseMap (IntMap.delete key releaseMap))

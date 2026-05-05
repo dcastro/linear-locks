@@ -9,8 +9,8 @@ module Test.LinearLocks.MutexSetSpec where
 import Control.Functor.Linear qualified as L
 import Data.Vector.Unboxed qualified as VU
 import LinearLocks
-import LinearLocks.Internal qualified as Internal
 import LinearLocks.Internal.MutexSet qualified as Internal
+import LinearLocks.Internal.Mutex qualified as Internal
 import Prelude.Linear (Ur (..))
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
 import Test.Hspec.Expectations.Pretty (shouldNotBe, shouldThrow)
