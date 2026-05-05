@@ -7,6 +7,7 @@ module Examples where
 import Control.Functor.Linear qualified as Linear
 import Control.Monad (replicateM_)
 import LinearLocks
+import LinearLocks.Mutex
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as Linear hiding (IO)
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)

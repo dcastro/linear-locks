@@ -45,6 +45,7 @@ And the following imports:
 
 \begin{code}
 import LinearLocks
+import LinearLocks.Mutex
 
 -- From `linear-base`:
 import Prelude.Linear (Ur (..))

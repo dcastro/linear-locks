@@ -9,6 +9,7 @@ module Test.LinearLocks.MutexSetSpec where
 import Control.Functor.Linear qualified as L
 import Data.Vector.Unboxed qualified as VU
 import LinearLocks
+import LinearLocks.Mutex
 import LinearLocks.Internal.MutexSet qualified as Internal
 import LinearLocks.Internal.Mutex qualified as Internal
 import Prelude.Linear (Ur (..))

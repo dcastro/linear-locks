@@ -13,6 +13,7 @@ import Control.Functor.Linear qualified as L
 import Data.Function ((&))
 import GHC.Conc (atomically)
 import LinearLocks
+import LinearLocks.Mutex
 import LinearLocks.Internal qualified as Internal
 import LinearLocks.Internal.Mutex qualified as Internal
 import ListT qualified

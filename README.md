@@ -58,6 +58,7 @@ And the following imports:
 
 ``` haskell
 import LinearLocks
+import LinearLocks.Mutex
 
 -- From `linear-base`:
 import Prelude.Linear (Ur (..))

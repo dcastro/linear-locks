@@ -41,33 +41,14 @@ example = do
 -}
 {- ORMOLU_ENABLE -}
 module LinearLocks
-  ( -- * Mutex
-    mkMutex,
-    Mutex,
-
-    -- * Lock scope
+  ( -- * Lock scope
     lockScope,
     MutexKey,
     NestedLocksScopeException (..),
-    lock,
-
-    -- * Mutex guards
-    MutexGuard,
-    readGuard,
-    writeGuard,
-    releaseGuard,
-
-    -- * Mutex sets
-    MutexSet,
-    IsMutexSet (), -- Note: do not export the typeclass members
-    mkMutexSet,
-    lockMany,
   )
 where
 
 import LinearLocks.Internal
-import LinearLocks.Internal.Mutex
-import LinearLocks.Internal.MutexSet
 
 -- $setup
 -- >>> data Config = Config { verbose :: Bool }
