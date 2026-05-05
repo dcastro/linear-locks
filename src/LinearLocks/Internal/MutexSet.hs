@@ -53,9 +53,9 @@ data MutexSet set where
 -- >>> m1 <- new 1 "a"
 -- >>> m2 <- new 1 "b"
 -- >>> m3 <- new 1 "c"
--- >>> set <- mkMutexSet (m1, m2, m3)
-mkMutexSet :: forall m set. (IsMutexSet set, MonadFail m) => set -> m (MutexSet set)
-mkMutexSet set =
+-- >>> set <- newMutexSet (m1, m2, m3)
+newMutexSet :: forall m set. (IsMutexSet set, MonadFail m) => set -> m (MutexSet set)
+newMutexSet set =
   if hasDups
     then fail "MutexSet: duplicate mutexes are not allowed"
     else pure $ MkMutexSet set sortedIndices

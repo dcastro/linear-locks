@@ -27,7 +27,7 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 
 data Mutex (lvl :: Nat) a = Mutex
   { var :: MVar a,
-    -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.mkMutexSet'.
+    -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.newMutexSet'.
     id :: MutexId
   }
 

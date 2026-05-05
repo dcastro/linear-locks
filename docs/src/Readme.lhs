@@ -45,7 +45,7 @@ And the following imports:
 
 \begin{code}
 import LinearLocks
-import LinearLocks.Mutex (lock, lockMany, mkMutexSet)
+import LinearLocks.Mutex (lock, lockMany, newMutexSet)
 import LinearLocks.Mutex qualified as Mutex
 
 -- From `linear-base`:
@@ -146,7 +146,7 @@ Mutexes with the same level must be acquired simultaneously by adding them to a 
   alice <- Mutex.new 3 User { balance = 100 }
   bob <- Mutex.new 3 User { balance = 100 }
 
-  users <- mkMutexSet (alice, bob)
+  users <- newMutexSet (alice, bob)
 
   lockScope \key -> Linear.do
     ((aliceGuard, bobGuard), key) <- lockMany key users

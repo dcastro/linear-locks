@@ -7,7 +7,7 @@ module Examples where
 import Control.Functor.Linear qualified as Linear
 import Control.Monad (replicateM_)
 import LinearLocks
-import LinearLocks.Mutex (lock, lockMany, mkMutexSet)
+import LinearLocks.Mutex (lock, lockMany, newMutexSet)
 import LinearLocks.Mutex qualified as Mutex
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as Linear hiding (IO)
@@ -93,7 +93,7 @@ example5 :: IO ()
 example5 = do
   m1 <- Mutex.new 0 3
   m2 <- Mutex.new 0 "hello world"
-  mutexSet <- mkMutexSet (m1, m2)
+  mutexSet <- newMutexSet (m1, m2)
   lockScope \key -> Linear.do
     ((mg1, mg2), key) <- lockMany key mutexSet
     (Ur count, mg1) <- Mutex.read mg1

@@ -11,7 +11,7 @@ import Data.Vector.Unboxed qualified as VU
 import LinearLocks
 import LinearLocks.Internal.Mutex qualified as Internal
 import LinearLocks.Internal.MutexSet qualified as Internal
-import LinearLocks.Mutex (lockMany, mkMutexSet)
+import LinearLocks.Mutex (lockMany, newMutexSet)
 import LinearLocks.Mutex qualified as Mutex
 import Prelude.Linear (Ur (..))
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
@@ -25,7 +25,7 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>> unit_mutexes_in_a_set_must_have_the_same_level = do
 -- >>>   m1 <- Mutex.new 2 "hello"
 -- >>>   m2 <- Mutex.new 3 "world"
--- >>>   set <- mkMutexSet (m1, m2)
+-- >>>   set <- newMutexSet (m1, m2)
 -- >>>   lockScope \key -> L.do
 -- >>>     ((mg1, mg2), key) <- lockMany key set
 -- >>>     Mutex.release mg1
@@ -40,7 +40,7 @@ unit_read_mutex_set = do
   m1 <- Mutex.new 0 "m1"
   m2 <- Mutex.new 0 "m2"
   m3 <- Mutex.new 0 "m3"
-  set <- mkMutexSet (m1, m2, m3)
+  set <- newMutexSet (m1, m2, m3)
 
   lockScope \key -> L.do
     ((mg1, mg2, mg3), key) <- lockMany key set
@@ -64,7 +64,7 @@ unit_write_mutex_set = do
   m1 <- Mutex.new 0 "m1"
   m2 <- Mutex.new 0 "m2"
   m3 <- Mutex.new 0 "m3"
-  set <- mkMutexSet (m3, m2, m1)
+  set <- newMutexSet (m3, m2, m1)
 
   lockScope \key -> L.do
     ((mg3, mg2, mg1), key) <- lockMany key set
@@ -110,7 +110,7 @@ unit_throws_when_mutex_set_contains_duplicates = do
   m1 <- Mutex.new 0 ""
   m2 <- Mutex.new 0 ""
 
-  mkMutexSet (m1, m2, m1) `shouldThrow` \(err :: IOError) -> err == userError "MutexSet: duplicate mutexes are not allowed"
+  newMutexSet (m1, m2, m1) `shouldThrow` \(err :: IOError) -> err == userError "MutexSet: duplicate mutexes are not allowed"
 
 unit_sorts_mutexes_deterministically :: IO ()
 unit_sorts_mutexes_deterministically = do
@@ -118,12 +118,12 @@ unit_sorts_mutexes_deterministically = do
   m2 <- Mutex.new 0 ""
   m3 <- Mutex.new 0 ""
 
-  mkMutexSet (m1, m2, m3) >>= \set -> sortedIndices set @?= VU.fromList [0, 1, 2]
-  mkMutexSet (m2, m1, m3) >>= \set -> sortedIndices set @?= VU.fromList [1, 0, 2]
-  mkMutexSet (m3, m1, m2) >>= \set -> sortedIndices set @?= VU.fromList [1, 2, 0]
-  mkMutexSet (m1, m3, m2) >>= \set -> sortedIndices set @?= VU.fromList [0, 2, 1]
-  mkMutexSet (m2, m3, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 0, 1]
-  mkMutexSet (m3, m2, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 1, 0]
+  newMutexSet (m1, m2, m3) >>= \set -> sortedIndices set @?= VU.fromList [0, 1, 2]
+  newMutexSet (m2, m1, m3) >>= \set -> sortedIndices set @?= VU.fromList [1, 0, 2]
+  newMutexSet (m3, m1, m2) >>= \set -> sortedIndices set @?= VU.fromList [1, 2, 0]
+  newMutexSet (m1, m3, m2) >>= \set -> sortedIndices set @?= VU.fromList [0, 2, 1]
+  newMutexSet (m2, m3, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 0, 1]
+  newMutexSet (m3, m2, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 1, 0]
   where
     sortedIndices :: forall set. Mutex.MutexSet set -> VU.Vector Int
     sortedIndices (Internal.MkMutexSet _ indices) = VU.map (\(Internal.MutexSetIndex i) -> i) indices

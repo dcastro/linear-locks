@@ -58,7 +58,7 @@ And the following imports:
 
 ``` haskell
 import LinearLocks
-import LinearLocks.Mutex (lock, lockMany, mkMutexSet)
+import LinearLocks.Mutex (lock, lockMany, newMutexSet)
 import LinearLocks.Mutex qualified as Mutex
 
 -- From `linear-base`:
@@ -165,7 +165,7 @@ them to a `MutexSet` and using `lockMany`.
   alice <- Mutex.new 3 User { balance = 100 }
   bob <- Mutex.new 3 User { balance = 100 }
 
-  users <- mkMutexSet (alice, bob)
+  users <- newMutexSet (alice, bob)
 
   lockScope \key -> Linear.do
     ((aliceGuard, bobGuard), key) <- lockMany key users
