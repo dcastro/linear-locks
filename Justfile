@@ -5,7 +5,7 @@ default:
 checks:
     just doctest
     just test
-    ./scripts/check_haddock_warnings.sh lib:linear-locks
+    just haddock
     xrefcheck
     # Build with `-Werror`
     stack clean && stack build --fast --test --bench --no-run-tests --no-run-benchmarks --ghc-options "-Werror"
@@ -26,6 +26,7 @@ haddock:
     ./scripts/check_haddock_warnings.sh lib:linear-locks
 
 haddock-hackage *ARGS:
+    cabal update
     cabal haddock lib:linear-locks --haddock-for-hackage {{ ARGS }}
 
 pandoc:

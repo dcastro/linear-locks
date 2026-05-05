@@ -34,10 +34,16 @@ import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear qualified as RIO
 import System.IO.Resource.Linear.Internal qualified as Internal
 
--- Notes:
---  * Do not export the constructor
---  * Do not implement `Consumable` / `Dupable` / `Movable`
-data MutexKey (lvl :: Nat) = UnsafeMutexKey
+-- | A key used to acquire locks.
+-- A key of level @n@ can only acquire locks of level @n@ or higher.
+--
+-- Acquiring a mutex with `lock` or `LinearLocks.lockMany` will consume the key and return a new key with an increased level,
+-- ensuring locks are always acquired in a consistent order.
+data MutexKey (lvl :: Nat)
+  = -- Notes:
+    --  * Do not export the constructor
+    --  * Do not implement `Consumable` / `Dupable` / `Movable`
+    UnsafeMutexKey
 
 -- | A unique identifier for a mutex.
 newtype MutexId = MutexId Int
@@ -118,10 +124,15 @@ readGuard :: MutexGuard a %1 -> RIO (Ur a, MutexGuard a)
 readGuard (MutexGuard resource (Ur newValue)) =
   L.pure (Ur newValue, MutexGuard {resource, newValue = Ur newValue})
 
+-- | Writes a new value to the mutex, which will be committed when the guard is released.
+--
+-- If an exception is thrown after `writeGuard` but before `releaseGuard`,
+-- the mutex will be rolled back to its original state.
 writeGuard :: MutexGuard a %1 -> a -> RIO (MutexGuard a)
 writeGuard (MutexGuard resource (Ur _)) newValue =
   L.pure (MutexGuard {resource, newValue = Ur newValue})
 
+-- | Releases a mutex and commits the latest value set by `writeGuard`.
 releaseGuard :: MutexGuard a %1 -> RIO ()
 releaseGuard (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
   -- Note: the resource was initially registered with a release action that puts the original value back into the MVar.
