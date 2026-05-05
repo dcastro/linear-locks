@@ -5,10 +5,10 @@ module LinearLocks.Mutex.Strict
 
     -- * Mutex guards
     MutexGuard,
-    Mutex.read,
+    StrictMutex.read,
     write,
     release,
   )
 where
 
-import LinearLocks.Internal.Mutex as Mutex
+import LinearLocks.Internal.StrictMutex as StrictMutex
