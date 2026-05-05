@@ -27,6 +27,7 @@ import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear qualified as RIO
 import System.IO.Resource.Linear.Internal qualified as Internal
 
+-- | A strict version of t'LinearLocks.Mutex.Mutex'.
 data Mutex (lvl :: Nat) a = Mutex
   { -- NOTE: we're using `MVar (NF a)` instead of e.g. `Control.Concurrent.MVar.Strict.MVar` (from the `strict-concurrency` package)
     -- because we don't want to require `NFData` when taking the mvar's (already evaluated) value and putting it right back in, unmodified.
