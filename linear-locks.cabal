@@ -48,6 +48,7 @@ library
       atomic-primops
     , base
     , containers
+    , deepseq
     , focus
     , linear-base
     , stm-containers
