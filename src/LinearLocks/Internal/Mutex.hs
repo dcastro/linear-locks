@@ -35,7 +35,7 @@ data Mutex (lvl :: Nat) a = Mutex
 --
 -- It can be used to read/write the mutex while the lock is held.
 --
--- It must be released with `releaseGuard`, after which the guard will be consumed and can no longer be used.
+-- It must be released with `release`, after which the guard will be consumed and can no longer be used.
 data MutexGuard a = MutexGuard
   { resource :: RIO.Resource (MutexResource a),
     -- | The latest value set by the user.
@@ -49,7 +49,7 @@ data MutexResource a = MutexResource
     -- This starts out as the same value that was in the MVar when the mutex was acquired.
     -- This ensures that, if an exception is thrown, the same value will be put back in and the MVar won't be modified.
     --
-    -- If no exceptions occur, `releaseGuard` will set `commitValue` to @MutexGuard.newValue@ before releasing the guard.
+    -- If no exceptions occur, `release` will set `commitValue` to @MutexGuard.newValue@ before releasing the guard.
     commitValue :: a,
     var :: MVar a
   }
@@ -86,26 +86,26 @@ unsafeLock m = L.do
     rel (MutexResource commitValue var) =
       L.void L.$ L.fromSystemIO L.$ MVar.putMVar var commitValue
 
-readGuard :: MutexGuard a %1 -> RIO (Ur a, MutexGuard a)
-readGuard (MutexGuard resource (Ur newValue)) =
+read :: MutexGuard a %1 -> RIO (Ur a, MutexGuard a)
+read (MutexGuard resource (Ur newValue)) =
   L.pure (Ur newValue, MutexGuard {resource, newValue = Ur newValue})
 
 -- | Writes a new value to the mutex, which will be committed when the guard is released.
 --
--- If an exception is thrown after `writeGuard` but before `releaseGuard`,
+-- If an exception is thrown after `write` but before `release`,
 -- the mutex will be rolled back to its original state.
-writeGuard :: MutexGuard a %1 -> a -> RIO (MutexGuard a)
-writeGuard (MutexGuard resource (Ur _)) newValue =
+write :: MutexGuard a %1 -> a -> RIO (MutexGuard a)
+write (MutexGuard resource (Ur _)) newValue =
   L.pure (MutexGuard {resource, newValue = Ur newValue})
 
--- | Releases a mutex and commits the latest value set by `writeGuard`.
-releaseGuard :: MutexGuard a %1 -> RIO ()
-releaseGuard (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
+-- | Releases a mutex and commits the latest value set by `write`.
+release :: MutexGuard a %1 -> RIO ()
+release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
   -- Note: the resource was initially registered with a release action that puts the original value back into the MVar.
-  -- That release action should be run if an exception is thrown before `releaseGuard` is called,
+  -- That release action should be run if an exception is thrown before `release` is called,
   -- which ensures the MVar will "rollback" to its original state.
   --
-  -- However, if `releaseGuard` is called explicitly by the user,
+  -- However, if `release` is called explicitly by the user,
   -- we want to update the release action to put `newValue` back into the MVar instead.
   -- Therefore, we must call `release'` with a _new release action_ that puts `newValue` into the MVar.
   release' (Internal.UnsafeResource key mr) L.do

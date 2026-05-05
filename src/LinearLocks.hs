@@ -25,16 +25,16 @@ example = do
     (dbGuard, key) <- lock key dbMutex
     --
     -- Read/write
-    (Ur config, configGuard) <- readGuard configGuard
-    configGuard <- writeGuard configGuard config { verbose = False }
+    (Ur config, configGuard) <- read configGuard
+    configGuard <- write configGuard config { verbose = False }
     --
     -- IO actions
     Internal.unsafeFromSystemIO do
       putStrLn $ "Verbose mode was: " <> show (verbose config)
     --
     -- Release mutexes
-    releaseGuard configGuard
-    releaseGuard dbGuard
+    release configGuard
+    release dbGuard
     Linear.pure (Ur (), key)
 :}
 

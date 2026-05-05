@@ -13,7 +13,8 @@ import Control.Functor.Linear qualified as L
 import Data.Function ((&))
 import GHC.Conc (atomically)
 import LinearLocks
-import LinearLocks.Mutex
+import LinearLocks.Mutex (lock)
+import LinearLocks.Mutex qualified as Mutex
 import LinearLocks.Internal qualified as Internal
 import LinearLocks.Internal.Mutex qualified as Internal
 import ListT qualified
@@ -29,13 +30,13 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>> :{
 -- >>> unit_mutexes_cannot_be_locked_in_wrong_order :: IO ()
 -- >>> unit_mutexes_cannot_be_locked_in_wrong_order = do
--- >>>   m1 <- mkMutex 2 "hello"
--- >>>   m2 <- mkMutex 4 "world"
+-- >>>   m1 <- Mutex.mkMutex 2 "hello"
+-- >>>   m2 <- Mutex.mkMutex 4 "world"
 -- >>>   lockScope \key -> L.do
 -- >>>     (mg2, key) <- lock key m2
 -- >>>     (mg1, key) <- lock key m1
--- >>>     releaseGuard mg1
--- >>>     releaseGuard mg2
+-- >>>     Mutex.release mg1
+-- >>>     Mutex.release mg2
 -- >>>     L.pure (Ur (), key)
 -- >>> :}
 -- ...
@@ -44,27 +45,27 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- ...
 unit_read_mutex :: IO ()
 unit_read_mutex = do
-  mutex <- mkMutex 0 "hello"
+  mutex <- Mutex.mkMutex 0 "hello"
   str <- lockScope \key -> L.do
     (mg, key) <- lock key mutex
-    (Ur str, mg) <- readGuard mg
-    releaseGuard mg
+    (Ur str, mg) <- Mutex.read mg
+    Mutex.release mg
     L.pure (Ur str, key)
   str @?= "hello"
 
 unit_write_mutex :: IO ()
 unit_write_mutex = do
-  mutex <- mkMutex 0 "hello"
+  mutex <- Mutex.mkMutex 0 "hello"
   lockScope \key -> L.do
     (mg, key) <- lock key mutex
-    mg <- writeGuard mg "world"
-    releaseGuard mg
+    mg <- Mutex.write mg "world"
+    Mutex.release mg
     L.pure (Ur (), key)
 
   str <- lockScope \key -> L.do
     (mg, key) <- lock key mutex
-    (Ur str, mg) <- readGuard mg
-    releaseGuard mg
+    (Ur str, mg) <- Mutex.read mg
+    Mutex.release mg
     L.pure (Ur str, key)
 
   str @?= "world"
@@ -74,7 +75,7 @@ unit_write_mutex = do
 
 unit_realeases_mvar :: IO ()
 unit_realeases_mvar = do
-  mutex <- mkMutex 0 "hello"
+  mutex <- Mutex.mkMutex 0 "hello"
   lockScope \key -> L.do
     (mg, key) <- lock key mutex
 
@@ -82,7 +83,7 @@ unit_realeases_mvar = do
       isEmpty <- MVar.isEmptyMVar mutex.var
       isEmpty @?= True
 
-    releaseGuard mg
+    Mutex.release mg
 
     Internal.unsafeFromSystemIO do
       isEmpty <- MVar.isEmptyMVar mutex.var
@@ -148,12 +149,12 @@ unit_updates_thread_ids = do
 
 unit_rolls_back_on_exception :: IO ()
 unit_rolls_back_on_exception = do
-  mutex <- mkMutex 0 "hello"
+  mutex <- Mutex.mkMutex 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
     (mg, key) <- lock key mutex
-    mg <- writeGuard mg "world"
+    mg <- Mutex.write mg "world"
     Internal.unsafeFromSystemIO L.$ throwIO (userError "oops")
-    releaseGuard mg
+    Mutex.release mg
     L.pure (Ur (), key)
 
   -- The MVar should have been released, and the original value should have been put back into the MVar.
@@ -162,12 +163,12 @@ unit_rolls_back_on_exception = do
 
 unit_rolls_back_on_imprecise_exception :: IO ()
 unit_rolls_back_on_imprecise_exception = do
-  mutex <- mkMutex 0 "hello"
+  mutex <- Mutex.mkMutex 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
     (mg, key) <- lock key mutex
-    mg <- writeGuard mg "world"
+    mg <- Mutex.write mg "world"
     error "err"
-    releaseGuard mg
+    Mutex.release mg
     L.pure (Ur (), key)
 
   -- The MVar should have been released, and the original value should have been put back into the MVar.

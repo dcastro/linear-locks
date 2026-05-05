@@ -6,9 +6,9 @@ module LinearLocks.Mutex
 
     -- * Mutex guards
     MutexGuard,
-    readGuard,
-    writeGuard,
-    releaseGuard,
+    Mutex.read,
+    write,
+    release,
 
     -- * Mutex sets
     MutexSet,
@@ -18,5 +18,5 @@ module LinearLocks.Mutex
   )
 where
 
-import LinearLocks.Internal.Mutex
+import LinearLocks.Internal.Mutex as Mutex
 import LinearLocks.Internal.MutexSet
