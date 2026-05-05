@@ -5,6 +5,7 @@ default:
 checks:
     just doctest
     just test
+    ./scripts/check_haddock_warnings.sh lib:linear-locks
     xrefcheck
     # Build with `-Werror`
     stack clean && stack build --fast --test --bench --no-run-tests --no-run-benchmarks --ghc-options "-Werror"
