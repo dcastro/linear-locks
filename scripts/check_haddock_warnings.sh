@@ -84,6 +84,11 @@ full_output="$(cat "$stdout_file")"
 normalized_output="$(printf '%s\n' "$full_output" | expand -t 8 | sed 's/[[:space:]]\+$//')"
 filtered_output="$normalized_output"
 
+# If Haddock produced documentation, always print that section (line and everything after it).
+if sed -n '/^Documentation created:/,${p;}' "$stdout_file" | grep -q '.'; then
+  sed -n '/^Documentation created:/,${p;}' "$stdout_file"
+fi
+
 while IFS= read -r -d '' expected_warning; do
   normalized_warning="$(printf '%s\n' "$expected_warning" | expand -t 8 | sed 's/[[:space:]]\+$//')"
   filtered_output="$(printf '%s' "$filtered_output" | EXPECTED_WARNING="$normalized_warning" perl -0pe 's/\Q$ENV{EXPECTED_WARNING}\E//g')"

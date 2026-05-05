@@ -22,11 +22,11 @@ doctest:
 
 # Note: `stack haddock` fails to create hyperlinks to definitions in other packages (e.g. `Ur` from `linear-base`)
 
-haddock *ARGS:
-    cabal haddock lib:linear-locks {{ ARGS }}
+haddock:
+    ./scripts/check_haddock_warnings.sh lib:linear-locks
 
 haddock-hackage *ARGS:
-    just haddock --haddock-for-hackage
+    cabal haddock lib:linear-locks --haddock-for-hackage {{ ARGS }}
 
 pandoc:
     ./scripts/run_pandoc.sh
