@@ -61,9 +61,11 @@ data MutexResource a = MutexResource
     var :: MVar (NF a)
   }
 
-instance Lockable (Mutex lvl a) where
+instance (NFData a) => Lockable (Mutex lvl a) where
   type Guard (Mutex lvl a) = MutexGuard a
   type Level (Mutex lvl a) = lvl
+
+  getId m = m.id
 
   unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
   unsafeLock m = L.do
@@ -83,6 +85,9 @@ instance Lockable (Mutex lvl a) where
       rel :: MutexResource a -> L.IO ()
       rel (MutexResource commitValue var) =
         L.void L.$ L.fromSystemIO L.$ MVar.putMVar var commitValue
+
+instance (NFData a) => Releasable (MutexGuard a) where
+  doRelease = release
 
 read :: MutexGuard a %1 -> RIO (Ur a, MutexGuard a)
 read (MutexGuard resource (Ur newValue)) =

@@ -58,7 +58,6 @@ And the following imports:
 
 ``` haskell
 import LinearLocks
-import LinearLocks.Mutex (lockMany, newMutexSet)
 import LinearLocks.Mutex qualified as Mutex
 
 -- From `linear-base`:

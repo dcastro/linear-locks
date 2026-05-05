@@ -64,6 +64,8 @@ instance Lockable (Mutex lvl a) where
   type Guard (Mutex lvl a) = MutexGuard a
   type Level (Mutex lvl a) = lvl
 
+  getId m = m.id
+
   unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
   unsafeLock m = L.do
     -- Note: we have to match on `UnsafeResource` so we can extract the `guard.commitValue`
@@ -82,6 +84,9 @@ instance Lockable (Mutex lvl a) where
       rel :: MutexResource a -> L.IO ()
       rel (MutexResource commitValue var) =
         L.void L.$ L.fromSystemIO L.$ MVar.putMVar var commitValue
+
+instance Releasable (MutexGuard a) where
+  doRelease = release
 
 read :: MutexGuard a %1 -> RIO (Ur a, MutexGuard a)
 read (MutexGuard resource (Ur newValue)) =

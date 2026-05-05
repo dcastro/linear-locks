@@ -127,12 +127,17 @@ lock UnsafeMutexKey m = L.do
   guard <- unsafeLock m
   L.pure (guard, UnsafeMutexKey)
 
-class Lockable lockable where
+class (Releasable (Guard lockable)) => Lockable lockable where
   type Guard lockable :: Type
   type Level lockable :: Nat
 
+  getId :: lockable -> MutexId
+
   -- | This is marked as unsafe because it does not consume a `MutexKey`.
   unsafeLock :: lockable -> RIO (Guard lockable)
+
+class Releasable guard where
+  doRelease :: guard %1 -> RIO ()
 
 ----------------------------------------------------------------------------
 -- Global variables

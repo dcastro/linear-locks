@@ -11,7 +11,6 @@ import Data.Vector.Unboxed qualified as VU
 import LinearLocks
 import LinearLocks.Internal.Mutex qualified as Internal
 import LinearLocks.Internal.MutexSet qualified as Internal
-import LinearLocks.Mutex (lockMany, newMutexSet)
 import LinearLocks.Mutex qualified as Mutex
 import Prelude.Linear (Ur (..))
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
@@ -125,5 +124,5 @@ unit_sorts_mutexes_deterministically = do
   newMutexSet (m2, m3, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 0, 1]
   newMutexSet (m3, m2, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 1, 0]
   where
-    sortedIndices :: forall set. Mutex.MutexSet set -> VU.Vector Int
+    sortedIndices :: forall set. MutexSet set -> VU.Vector Int
     sortedIndices (Internal.MkMutexSet _ indices) = VU.map (\(Internal.MutexSetIndex i) -> i) indices

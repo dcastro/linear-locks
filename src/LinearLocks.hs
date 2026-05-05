@@ -47,10 +47,17 @@ module LinearLocks
     NestedLocksScopeException (..),
     lock,
     Lockable (), -- Note: do not export the typeclass members
+
+    -- * Mutex sets
+    MutexSet,
+    IsMutexSet (), -- Note: do not export the typeclass members
+    newMutexSet,
+    lockMany,
   )
 where
 
 import LinearLocks.Internal
+import LinearLocks.Internal.MutexSet
 
 -- $setup
 -- >>> data Config = Config { verbose :: Bool }
