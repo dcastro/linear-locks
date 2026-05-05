@@ -21,6 +21,7 @@ import Data.Vector.Unboxed qualified as VU
 import Data.Vector.Unboxed.Mutable qualified as VUM
 import GHC.TypeLits (Nat, type (+), type (<=))
 import LinearLocks.Internal
+import LinearLocks.Internal.Mutex
 import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear.Internal qualified as Internal
 
@@ -49,12 +50,12 @@ data MutexSet set where
 --
 -- Fails if the set contains duplicate mutexes.
 --
--- >>> m1 <- mkMutex 1 "a"
--- >>> m2 <- mkMutex 1 "b"
--- >>> m3 <- mkMutex 1 "c"
--- >>> set <- mkMutexSet (m1, m2, m3)
-mkMutexSet :: forall m set. (IsMutexSet set, MonadFail m) => set -> m (MutexSet set)
-mkMutexSet set =
+-- >>> m1 <- new 1 "a"
+-- >>> m2 <- new 1 "b"
+-- >>> m3 <- new 1 "c"
+-- >>> set <- newMutexSet (m1, m2, m3)
+newMutexSet :: forall m set. (IsMutexSet set, MonadFail m) => set -> m (MutexSet set)
+newMutexSet set =
   if hasDups
     then fail "MutexSet: duplicate mutexes are not allowed"
     else pure $ MkMutexSet set sortedIndices
@@ -138,8 +139,8 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b) where
 
       releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b)) %1 -> String -> RIO x
       releaseAndFail (g1, g2) errMsg = L.do
-        releaseGuardMb g1
-        releaseGuardMb g2
+        releaseMb g1
+        releaseMb g2
         failRIO errMsg
 
 instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c) where
@@ -179,9 +180,9 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c) where
 
       releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c)) %1 -> String -> RIO x
       releaseAndFail (g1, g2, g3) errMsg = L.do
-        releaseGuardMb g1
-        releaseGuardMb g2
-        releaseGuardMb g3
+        releaseMb g1
+        releaseMb g2
+        releaseMb g3
         failRIO errMsg
 
 instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d) where
@@ -227,10 +228,10 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d) where
 
       releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c), Maybe (MutexGuard d)) %1 -> String -> RIO x
       releaseAndFail (g1, g2, g3, g4) errMsg = L.do
-        releaseGuardMb g1
-        releaseGuardMb g2
-        releaseGuardMb g3
-        releaseGuardMb g4
+        releaseMb g1
+        releaseMb g2
+        releaseMb g3
+        releaseMb g4
         failRIO errMsg
 
 instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d, Mutex lvl e) where
@@ -282,11 +283,11 @@ instance IsMutexSet (Mutex lvl a, Mutex lvl b, Mutex lvl c, Mutex lvl d, Mutex l
 
       releaseAndFail :: (Maybe (MutexGuard a), Maybe (MutexGuard b), Maybe (MutexGuard c), Maybe (MutexGuard d), Maybe (MutexGuard e)) %1 -> String -> RIO x
       releaseAndFail (g1, g2, g3, g4, g5) errMsg = L.do
-        releaseGuardMb g1
-        releaseGuardMb g2
-        releaseGuardMb g3
-        releaseGuardMb g4
-        releaseGuardMb g5
+        releaseMb g1
+        releaseMb g2
+        releaseMb g3
+        releaseMb g4
+        releaseMb g5
         failRIO errMsg
 
 ----------------------------------------------------------------------------
@@ -302,10 +303,10 @@ dupIndex index = "MutexSet: duplicate index: " <> show index
 invalidIndex :: Int -> String
 invalidIndex index = "MutexSet: invalid index: " <> show index
 
-releaseGuardMb :: Maybe (MutexGuard a) %1 -> RIO ()
-releaseGuardMb = \case
+releaseMb :: Maybe (MutexGuard a) %1 -> RIO ()
+releaseMb = \case
   Nothing -> L.pure ()
-  Just guard -> releaseGuard guard
+  Just guard -> release guard
 
 failRIO :: String -> RIO a
 failRIO msg = L.do

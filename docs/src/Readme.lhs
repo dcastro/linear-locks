@@ -45,6 +45,8 @@ And the following imports:
 
 \begin{code}
 import LinearLocks
+import LinearLocks.Mutex (lock, lockMany, newMutexSet)
+import LinearLocks.Mutex qualified as Mutex
 
 -- From `linear-base`:
 import Prelude.Linear (Ur (..))
@@ -68,10 +70,10 @@ Each mutex is assigned a "level" at compile-time.
 
 \begin{code}
   -- `Mutex 0 Config`
-  configMutex <- mkMutex 0 Config { verbose = True }
+  configMutex <- Mutex.new 0 Config { verbose = True }
 
   -- `Mutex 1 DbConn`
-  dbMutex <- mkMutex 1 DbConn {}
+  dbMutex <- Mutex.new 1 DbConn {}
 \end{code}
 
 We can then enter a "lock scope".
@@ -93,8 +95,8 @@ Every time we acquire a mutex, the key's level increases. Acquiring `Mutex 0 Con
     (dbGuard, key) <- lock key dbMutex
     --         ↑ Returns `MutexKey 2`
 
-    releaseGuard configGuard
-    releaseGuard dbGuard
+    Mutex.release configGuard
+    Mutex.release dbGuard
     Linear.pure (Ur (), key)
 \end{code}
 
@@ -115,24 +117,24 @@ We can freely read from / write to it while the lock is held.
 
 The guard is also linearly typed, thus ensuring:
 
-* We can never forget to release it with `releaseGuard`.
+* We can never forget to release it with `release`.
 * It cannot be used after being released.
 
 \begin{code}
   lockScope \key -> Linear.do
     (configGuard, key) <- lock key configMutex
 
-    (Ur config, configGuard) <- readGuard configGuard
+    (Ur config, configGuard) <- Mutex.read configGuard
 
-    configGuard <- writeGuard configGuard config { verbose = False }
+    configGuard <- Mutex.write configGuard config { verbose = False }
 
-    releaseGuard configGuard
+    Mutex.release configGuard
     Linear.pure (Ur (), key)
 \end{code}
 
-Since the guard is linear, `readGuard` and `writeGuard` must consume the guard and return a new one.
+Since the guard is linear, `read` and `write` must consume the guard and return a new one.
 
-`readGuard configGuard` returns a `Ur Config`.
+`read configGuard` returns a `Ur Config`.
 `Ur` is short for "unrestricted", meaning the value is _not_ linear
 and can be freely used as many times as needed.
 
@@ -141,21 +143,21 @@ and can be freely used as many times as needed.
 Mutexes with the same level must be acquired simultaneously by adding them to a `MutexSet` and using `lockMany`.
 
 \begin{code}
-  alice <- mkMutex 3 User { balance = 100 }
-  bob <- mkMutex 3 User { balance = 100 }
+  alice <- Mutex.new 3 User { balance = 100 }
+  bob <- Mutex.new 3 User { balance = 100 }
 
-  users <- mkMutexSet (alice, bob)
+  users <- newMutexSet (alice, bob)
 
   lockScope \key -> Linear.do
     ((aliceGuard, bobGuard), key) <- lockMany key users
-    (Ur alice, aliceGuard) <- readGuard aliceGuard
-    (Ur bob, bobGuard) <- readGuard bobGuard
+    (Ur alice, aliceGuard) <- Mutex.read aliceGuard
+    (Ur bob, bobGuard) <- Mutex.read bobGuard
 
-    bobGuard <- writeGuard bobGuard bob { balance = balance bob + 10 }
-    aliceGuard <- writeGuard aliceGuard alice { balance = balance alice - 10 }
+    bobGuard <- Mutex.write bobGuard bob { balance = balance bob + 10 }
+    aliceGuard <- Mutex.write aliceGuard alice { balance = balance alice - 10 }
 
-    releaseGuard bobGuard
-    releaseGuard aliceGuard
+    Mutex.release bobGuard
+    Mutex.release aliceGuard
     Linear.pure (Ur (), key)
 \end{code}
 
@@ -174,15 +176,15 @@ The [upcoming `linear-base` release][PR] will include public `fromSystemIO` and 
 \begin{code}
   lockScope \key -> Linear.do
     (configGuard, key) <- lock key configMutex
-    (Ur config, configGuard) <- readGuard configGuard
+    (Ur config, configGuard) <- Mutex.read configGuard
 
     Ur newVerbose <- Internal.unsafeFromSystemIO do
       putStrLn $ "Verbose mode is: " <> show (verbose config)
       putStrLn $ "Enter new verbose mode: "
       Ur <$> readLn @Bool
 
-    configGuard <- writeGuard configGuard config { verbose = newVerbose }
-    releaseGuard configGuard
+    configGuard <- Mutex.write configGuard config { verbose = newVerbose }
+    Mutex.release configGuard
     Linear.pure (Ur (), key)
 \end{code}
 

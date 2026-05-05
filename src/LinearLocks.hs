@@ -15,8 +15,8 @@ It is meant to be used with @QualifiedDo@ and these imports:
 example :: IO ()
 example = do
   -- Create mutexes with a chosen level
-  configMutex <- mkMutex 0 Config { verbose = True }
-  dbMutex <- mkMutex 1 DbConn {}
+  configMutex <- new 0 Config { verbose = True }
+  dbMutex <- new 1 DbConn {}
   --
   -- Enter a lockscope
   lockScope \key -> Linear.do
@@ -25,48 +25,30 @@ example = do
     (dbGuard, key) <- lock key dbMutex
     --
     -- Read/write
-    (Ur config, configGuard) <- readGuard configGuard
-    configGuard <- writeGuard configGuard config { verbose = False }
+    (Ur config, configGuard) <- read configGuard
+    configGuard <- write configGuard config { verbose = False }
     --
     -- IO actions
     Internal.unsafeFromSystemIO do
       putStrLn $ "Verbose mode was: " <> show (verbose config)
     --
     -- Release mutexes
-    releaseGuard configGuard
-    releaseGuard dbGuard
+    release configGuard
+    release dbGuard
     Linear.pure (Ur (), key)
 :}
 
 -}
 {- ORMOLU_ENABLE -}
 module LinearLocks
-  ( -- * Mutex
-    mkMutex,
-    Mutex,
-
-    -- * Lock scope
+  ( -- * Lock scope
     lockScope,
     MutexKey,
     NestedLocksScopeException (..),
-    lock,
-
-    -- * Mutex guards
-    MutexGuard,
-    readGuard,
-    writeGuard,
-    releaseGuard,
-
-    -- * Mutex sets
-    MutexSet,
-    IsMutexSet (), -- Note: do not export the typeclass members
-    mkMutexSet,
-    lockMany,
   )
 where
 
 import LinearLocks.Internal
-import LinearLocks.Internal.MutexSet
 
 -- $setup
 -- >>> data Config = Config { verbose :: Bool }

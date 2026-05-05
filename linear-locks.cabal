@@ -29,7 +29,9 @@ library
   exposed-modules:
       LinearLocks
       LinearLocks.Internal
+      LinearLocks.Internal.Mutex
       LinearLocks.Internal.MutexSet
+      LinearLocks.Mutex
   other-modules:
       Paths_linear_locks
   autogen-modules:
