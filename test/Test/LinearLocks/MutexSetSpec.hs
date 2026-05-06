@@ -12,6 +12,7 @@ import LinearLocks
 import LinearLocks.Internal.Mutex qualified as Internal
 import LinearLocks.Internal.MutexSet qualified as Internal
 import LinearLocks.Mutex qualified as Mutex
+import LinearLocks.Mutex.Strict qualified as StrictMutex
 import Prelude.Linear (Ur (..))
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
 import Test.Hspec.Expectations.Pretty (shouldNotBe, shouldThrow)
@@ -123,3 +124,23 @@ unit_sorts_mutexes_deterministically = do
   where
     sortedIndices :: forall set. MutexSet set -> VU.Vector Int
     sortedIndices (Internal.MkMutexSet _ indices) = VU.map (\(Internal.MutexSetIndex i) -> i) indices
+
+unit_sets_can_have_mixed_mutex_types :: IO ()
+unit_sets_can_have_mixed_mutex_types = do
+  m1 <- StrictMutex.new 0 "hello"
+  m2 <- Mutex.new @Int 0 99
+  set <- newMutexSet (m1, m2)
+
+  lockScope \key -> L.do
+    ((mg1, mg2), key) <- lockMany key set
+
+    (Ur res1, mg1) <- StrictMutex.read mg1
+    (Ur res2, mg2) <- Mutex.read mg2
+
+    Internal.unsafeFromSystemIO do
+      res1 @?= "hello"
+      res2 @?= 99
+
+    StrictMutex.release mg1
+    Mutex.release mg2
+    L.pure (Ur (), key)
