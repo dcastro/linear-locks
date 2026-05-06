@@ -50,7 +50,7 @@ import LinearLocks.Mutex qualified as Mutex
 -- From `linear-base`:
 import Prelude.Linear (Ur (..))
 import Control.Functor.Linear qualified as Linear
-import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
+import Control.Monad.IO.Class.Linear qualified as Linear
 \end{code}
 
 
@@ -166,27 +166,26 @@ in them being acquired in the same order.
 
 <h3>IO</h3>
 
-For the time being, in order to perform IO actions within a lock scope,
-we need to use `linear-base`'s `Internal.unsafeFromSystemIO`.
-
-Note, however, that this function is in fact safe.
-The [upcoming `linear-base` release][PR] will include public `fromSystemIO` and `liftSystemIO` functions.
+You can use the linear [`MonadIO` from `linear-base`][MonadIO] to lift `IO` actions into the lock scope.
 
 \begin{code}
   lockScope \key -> Linear.do
     (configGuard, key) <- lock key configMutex
     (Ur config, configGuard) <- Mutex.read configGuard
 
-    Ur newVerbose <- Internal.unsafeFromSystemIO do
+    Ur newVerbose <- Linear.liftSystemIOU do
       putStrLn $ "Verbose mode is: " <> show (verbose config)
       putStrLn $ "Enter new verbose mode: "
-      Ur <$> readLn @Bool
+      readLn @Bool
 
     configGuard <- Mutex.write configGuard config { verbose = newVerbose }
     Mutex.release configGuard
     Linear.pure (Ur (), key)
 \end{code}
 
+Note: for the time being, the `linear-locks` package conditionally provides an orphan instance of `MonadIO` for the `RIO` monad
+when compiled against `linear-base <= 0.7.0`.
+The next version of `linear-base` [will include][PR] a `MonadIO` instance itself.
 
 Roadmap
 ---
@@ -201,5 +200,6 @@ Roadmap
  [RIO]: https://hackage-content.haskell.org/package/linear-base/docs/System-IO-Resource-Linear.html
  [Ur]: https://hackage-content.haskell.org/package/linear-base/docs/Data-Unrestricted-Linear.html#t:Ur
  [Coffman]: https://en.wikipedia.org/wiki/Deadlock_(computer_science)#Prevention
+ [MonadIO]: https://hackage-content.haskell.org/package/linear-base/docs/Control-Monad-IO-Class-Linear.html
  [PR]: https://github.com/tweag/linear-base/pull/505
  [STM]: https://chrispenner.ca/posts/mutexes

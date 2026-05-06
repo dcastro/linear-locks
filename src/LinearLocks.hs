@@ -12,7 +12,7 @@ It is meant to be used with @QualifiedDo@ and these imports:
 >>> import LinearLocks.Mutex qualified as Mutex
 >>> import Prelude.Linear (Ur (..))
 >>> import Control.Functor.Linear qualified as Linear
->>> import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
+>>> import Control.Monad.IO.Class.Linear qualified as Linear
 
 
 >>> :{
@@ -33,7 +33,7 @@ example = do
     configGuard <- Mutex.write configGuard config { verbose = False }
     --
     -- IO actions
-    Internal.unsafeFromSystemIO do
+    Linear.liftSystemIO do
       putStrLn $ "Verbose mode was: " <> show (verbose config)
     --
     -- Release mutexes

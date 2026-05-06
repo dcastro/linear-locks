@@ -7,6 +7,7 @@
 module Test.LinearLocks.MutexSetSpec where
 
 import Control.Functor.Linear qualified as L
+import Control.Monad.IO.Class.Linear qualified as L
 import Data.Vector.Unboxed qualified as VU
 import LinearLocks
 import LinearLocks.Internal.Mutex qualified as Internal
@@ -14,7 +15,6 @@ import LinearLocks.Internal.MutexSet qualified as Internal
 import LinearLocks.Mutex qualified as Mutex
 import LinearLocks.Mutex.Strict qualified as StrictMutex
 import Prelude.Linear (Ur (..))
-import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
 import Test.Hspec.Expectations.Pretty (shouldNotBe, shouldThrow)
 import "tasty-hunit-compat" Test.Tasty.HUnit
 
@@ -46,7 +46,7 @@ unit_read_mutex_set = do
     (Ur str2, mg2) <- Mutex.read mg2
     (Ur str3, mg3) <- Mutex.read mg3
 
-    Internal.unsafeFromSystemIO do
+    L.liftSystemIO do
       str1 @?= "m1"
       str2 @?= "m2"
       str3 @?= "m3"
@@ -82,7 +82,7 @@ unit_write_mutex_set = do
     (Ur str2, mg2) <- Mutex.read mg2
     (Ur str1, mg1) <- Mutex.read mg1
 
-    Internal.unsafeFromSystemIO do
+    L.liftSystemIO do
       str3 @?= "m3 updated"
       str2 @?= "m2 updated"
       str1 @?= "m1 updated"
@@ -137,7 +137,7 @@ unit_sets_can_have_mixed_mutex_types = do
     (Ur res1, mg1) <- StrictMutex.read mg1
     (Ur res2, mg2) <- Mutex.read mg2
 
-    Internal.unsafeFromSystemIO do
+    L.liftSystemIO do
       res1 @?= "hello"
       res2 @?= 99
 

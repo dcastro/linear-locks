@@ -6,11 +6,11 @@ module Examples where
 
 import Control.Functor.Linear qualified as Linear
 import Control.Monad (replicateM_)
+import Control.Monad.IO.Class.Linear qualified as Linear
 import LinearLocks
 import LinearLocks.Mutex qualified as Mutex
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as Linear hiding (IO)
-import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
 
 -- | Acquire 1 lock
 --
@@ -22,7 +22,7 @@ example1 = do
   lockScope \key -> Linear.do
     (mg, key) <- lock key mutex
     (Ur str, mg) <- Mutex.read mg
-    Internal.unsafeFromSystemIO (putStrLn str)
+    Linear.liftSystemIO (putStrLn str)
     mg <- Mutex.write mg "world"
     Mutex.release mg
     Linear.pure (Ur (), key)
@@ -53,7 +53,7 @@ example3 = do
     (Ur str1, mg1) <- Mutex.read mg1
     (Ur str2, mg2) <- Mutex.read mg2
 
-    Internal.unsafeFromSystemIO (putStrLn $ str1 <> " " <> str2)
+    Linear.liftSystemIO (putStrLn $ str1 <> " " <> str2)
 
     Mutex.release mg1
     Mutex.release mg2
@@ -73,7 +73,7 @@ example4 = do
     (mg2, key) <- lock key m2
 
     -- Attempt to use nested lockScopes to acquire locks out of order.
-    Internal.unsafeFromSystemIO Linear.$ lockScope \key -> Linear.do
+    Linear.liftSystemIO Linear.$ lockScope \key -> Linear.do
       (mg1, key) <- lock key m1
       Mutex.release mg1
       Linear.pure (Ur (), key)
@@ -98,7 +98,7 @@ example5 = do
     (Ur count, mg1) <- Mutex.read mg1
     (Ur str, mg2) <- Mutex.read mg2
 
-    Internal.unsafeFromSystemIO do
+    Linear.liftSystemIO do
       replicateM_ count $ putStrLn str
 
     Mutex.release mg1

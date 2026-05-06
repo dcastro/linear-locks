@@ -10,6 +10,7 @@
 module LinearLocks.Internal.MutexSet where
 
 import Control.Functor.Linear qualified as L
+import Control.Monad.IO.Class.Linear qualified as L
 import Control.Monad.ST (ST, runST)
 import Data.Function (on)
 import Data.Kind (Type)
@@ -22,7 +23,6 @@ import Data.Vector.Unboxed.Mutable qualified as VUM
 import GHC.TypeLits (Nat, type (+), type (<=))
 import LinearLocks.Internal
 import System.IO.Resource.Linear (RIO)
-import System.IO.Resource.Linear.Internal qualified as Internal
 
 -- | The index of a mutex in a mutex set.
 newtype MutexSetIndex = MutexSetIndex Int
@@ -346,7 +346,7 @@ releaseMb = \case
 
 failRIO :: String -> RIO a
 failRIO msg = L.do
-  Internal.unsafeFromSystemIO (fail msg)
+  L.liftSystemIO (fail msg)
 
 modifyM :: forall m s. (L.Functor m) => (s %1 -> m s) %1 -> L.StateT s m ()
 modifyM f =

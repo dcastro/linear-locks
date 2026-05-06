@@ -11,6 +11,7 @@ import Control.Concurrent.MVar qualified as MVar
 import Control.Exception (SomeException, throwIO, try)
 import Control.Functor.Linear qualified as L
 import Control.Monad (void)
+import Control.Monad.IO.Class.Linear qualified as L
 import Data.Function ((&))
 import GHC.Conc (atomically)
 import LinearLocks
@@ -21,7 +22,6 @@ import ListT qualified
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
 import StmContainers.Set qualified as StmSet
-import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
 import Test.Hspec.Expectations.Pretty (anyIOException, shouldThrow)
 import "tasty-hunit-compat" Test.Tasty.HUnit
 
@@ -79,13 +79,13 @@ unit_realeases_mvar = do
   lockScope \key -> L.do
     (mg, key) <- lock key mutex
 
-    Internal.unsafeFromSystemIO do
+    L.liftSystemIO do
       isEmpty <- MVar.isEmptyMVar mutex.var
       isEmpty @?= True
 
     Mutex.release mg
 
-    Internal.unsafeFromSystemIO do
+    L.liftSystemIO do
       isEmpty <- MVar.isEmptyMVar mutex.var
       isEmpty @?= False
 
@@ -98,7 +98,7 @@ unit_cant_nest_lockscopes :: IO ()
 unit_cant_nest_lockscopes = do
   let run =
         lockScope \key -> L.do
-          Internal.unsafeFromSystemIO do
+          L.liftSystemIO do
             lockScope \key -> L.pure (Ur (), key)
           L.pure (Ur (), key)
 
@@ -110,15 +110,15 @@ unit_updates_thread_ids = do
 
   getThreadIds >>= \tids -> tids @?= []
   lockScope \key -> L.do
-    Internal.unsafeFromSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
+    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
     L.pure (Ur (), key)
   getThreadIds >>= \tids -> tids @?= []
 
   -- Check that the thread ID is removed even if an exception is thrown.
   let run =
         lockScope \key -> L.do
-          Internal.unsafeFromSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-          Internal.unsafeFromSystemIO L.$ throwIO (userError "oops")
+          L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
+          L.liftSystemIO L.$ throwIO (userError "oops")
           L.pure (Ur (), key)
   run `shouldThrow` anyIOException
   getThreadIds >>= \tids -> tids @?= []
@@ -126,8 +126,8 @@ unit_updates_thread_ids = do
   -- Check that the thread ID is removed even if when a nested lock scope is attempted
   let run =
         lockScope \key -> L.do
-          Internal.unsafeFromSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-          Internal.unsafeFromSystemIO do
+          L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
+          L.liftSystemIO do
             lockScope \key -> L.pure (Ur (), key)
           L.pure (Ur (), key)
   run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
@@ -135,11 +135,11 @@ unit_updates_thread_ids = do
 
   -- Check that the thread ID is NOT removed if a nested lock scope is caught
   lockScope \key -> L.do
-    Internal.unsafeFromSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    Internal.unsafeFromSystemIO do
+    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
+    L.liftSystemIO do
       Left _ <- try @SomeException $ lockScope \key -> L.pure (Ur (), key)
       pure ()
-    Internal.unsafeFromSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
+    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
     L.pure (Ur (), key)
   getThreadIds >>= \tids -> tids @?= []
   where
@@ -153,7 +153,7 @@ unit_rolls_back_on_exception = do
   Left _ <- try @SomeException $ lockScope \key -> L.do
     (mg, key) <- lock key mutex
     mg <- Mutex.write mg "world"
-    Internal.unsafeFromSystemIO L.$ throwIO (userError "oops")
+    L.liftSystemIO L.$ throwIO (userError "oops")
     Mutex.release mg
     L.pure (Ur (), key)
 

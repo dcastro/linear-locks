@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LinearTypes #-}
@@ -9,11 +10,16 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
+#if !MIN_VERSION_linear_base(0,7,1)
+{-# OPTIONS_GHC -Wno-orphans #-}
+#endif
+
 module LinearLocks.Internal where
 
 import Control.Concurrent (ThreadId, myThreadId)
 import Control.Exception (Exception (..), bracket_, throw)
 import Control.Functor.Linear qualified as L
+import Control.Monad.IO.Class.Linear qualified as L
 import Data.Atomics.Counter (AtomicCounter)
 import Data.Atomics.Counter qualified as Atomic
 import Data.Vector.Generic qualified as VG
@@ -29,6 +35,9 @@ import Prelude.Linear (Ur (..))
 import StmContainers.Set qualified as StmSet
 import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear qualified as RIO
+#if !MIN_VERSION_linear_base(0,7,1)
+import System.IO.Resource.Linear.Internal qualified as RIOInternal
+#endif
 
 -- | A key used to acquire locks.
 -- A key of level @n@ can only acquire locks of level @n@ or higher.
@@ -160,3 +169,10 @@ lockScopes =
 mutexIdCounter :: AtomicCounter
 mutexIdCounter =
   unsafePerformIO $ Atomic.newCounter 0
+
+-- Only provide this orphan instance for linear-base <= 0.7.0
+-- The next release will come with this instance built-in: https://github.com/tweag/linear-base/pull/505
+#if !MIN_VERSION_linear_base(0,7,1)
+instance L.MonadIO RIO where
+  liftIO action = RIOInternal.RIO (\_ -> action)
+#endif
