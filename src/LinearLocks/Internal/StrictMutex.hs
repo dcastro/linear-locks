@@ -51,13 +51,10 @@ data MutexGuard a = MutexGuard
   }
 
 data MutexResource a = MutexResource
-  { -- | The value to put back into the MVar when the mutex guard is released.
+  { -- | The value that was read from the `MVar` when it was acquired.
     --
-    -- This starts out as the same value that was in the MVar when the mutex was acquired.
-    -- This ensures that, if an exception is thrown, the same value will be put back in and the MVar won't be modified.
-    --
-    -- If no exceptions occur, `release` will set `commitValue` to @MutexGuard.newValue@ before releasing the guard.
-    commitValue :: (NF a),
+    -- If an exception occurs before the mutex guard is manually released, this value will be put back into the `MVar`.
+    initialValue :: (NF a),
     var :: MVar (NF a)
   }
 
@@ -69,22 +66,23 @@ instance (NFData a) => Lockable (Mutex lvl a) where
 
   unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
   unsafeLock m = L.do
-    -- Note: we have to match on `UnsafeResource` so we can extract the `guard.commitValue`
+    -- Note: we have to match on `UnsafeResource` so we can extract the `guard.initialValue`
     Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
     L.pure
       MutexGuard
         { resource = Internal.UnsafeResource key guard,
-          newValue = Ur guard.commitValue.unNF
+          newValue = Ur guard.initialValue.unNF
         }
     where
       acq :: L.IO (Ur (MutexResource a))
       acq = L.do
         Ur a <- L.fromSystemIOU L.$ MVar.takeMVar m.var
-        L.pure (Ur (MutexResource {commitValue = a, var = m.var}))
+        L.pure (Ur (MutexResource {initialValue = a, var = m.var}))
 
+      -- The action to run if an exception is thrown before the guard is manually released with `release`.
       rel :: MutexResource a -> L.IO ()
-      rel (MutexResource commitValue var) =
-        L.void L.$ L.fromSystemIO L.$ MVar.putMVar var commitValue
+      rel (MutexResource initialValue var) =
+        L.void L.$ L.fromSystemIO L.$ MVar.putMVar var initialValue
 
 instance (NFData a) => Releasable (MutexGuard a) where
   doRelease = release
