@@ -10,6 +10,7 @@ import Control.Concurrent (ThreadId, myThreadId)
 import Control.Concurrent.MVar qualified as MVar
 import Control.Exception (SomeException, throwIO, try)
 import Control.Functor.Linear qualified as L
+import Control.Monad (void)
 import Data.Function ((&))
 import GHC.Conc (atomically)
 import LinearLocks
@@ -173,3 +174,20 @@ unit_rolls_back_on_imprecise_exception = do
   -- The MVar should have been released, and the original value should have been put back into the MVar.
   mbResult <- MVar.tryTakeMVar mutex.var
   mbResult @?= Just "hello"
+
+unit_new_doesnt_evaluate_value_to_normal_form :: IO ()
+unit_new_doesnt_evaluate_value_to_normal_form = do
+  -- This should not throw, the "error" thunk should not be evaluated
+  void $ Mutex.new @[Int] 0 [1, 2, error "oops", 4]
+
+unit_release_doesnt_evaluate_value_to_normal_form :: IO ()
+unit_release_doesnt_evaluate_value_to_normal_form = do
+  mutex <- Mutex.new @[Int] 0 [1]
+
+  lockScope \key -> L.do
+    (mg, key) <- lock key mutex
+    -- This should not throw, the "error" thunk should not be evaluated
+    mg <- Mutex.write mg [1, 2, error "oops", 4]
+    -- This should not throw
+    Mutex.release mg
+    L.pure (Ur (), key)

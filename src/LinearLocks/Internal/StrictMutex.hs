@@ -153,7 +153,8 @@ release' (Internal.UnsafeResource key _) release = Internal.RIO (\st -> L.mask_ 
 --
 -- NOTE: `NF` will only turn "shallow evaluation" into "deep evaluation".
 -- You must still use a bang pattern on `NF` to force it.
-newtype NF a = NF {unNF :: a}
+newtype NF a = UnsafeNF {unNF :: a}
+  deriving newtype (Show, Eq)
 
 mkNF :: (NFData a) => a -> NF a
-mkNF = NF . force
+mkNF = UnsafeNF . force
