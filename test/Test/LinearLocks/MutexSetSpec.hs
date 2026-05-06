@@ -25,14 +25,11 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>>   m1 <- Mutex.new 2 "hello"
 -- >>>   m2 <- Mutex.new 3 "world"
 -- >>>   set <- newMutexSet (m1, m2)
--- >>>   lockScope \key -> L.do
--- >>>     ((mg1, mg2), key) <- lockMany key set
--- >>>     Mutex.release mg1
--- >>>     Mutex.release mg2
--- >>>     L.pure (Ur (), key)
+-- >>>   pure ()
 -- >>> :}
 -- ...
--- ... • Cannot satisfy: 0 <= Internal.MutexSetLevel
+-- ... • Couldn't match type ‘2’ with ‘3’
+-- ...     arising from a use of ‘newMutexSet’
 -- ...
 unit_read_mutex_set :: IO ()
 unit_read_mutex_set = do

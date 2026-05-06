@@ -8,15 +8,19 @@ An in-depth description and tutorial can be found in the [README](https://github
 It is meant to be used with @QualifiedDo@ and these imports:
 
 >>> :set -XQualifiedDo -XGHC2024 -XBlockArguments
+>>> import LinearLocks
+>>> import LinearLocks.Mutex qualified as Mutex
 >>> import Prelude.Linear (Ur (..))
 >>> import Control.Functor.Linear qualified as Linear
 >>> import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
+
+
 >>> :{
 example :: IO ()
 example = do
   -- Create mutexes with a chosen level
-  configMutex <- new 0 Config { verbose = True }
-  dbMutex <- new 1 DbConn {}
+  configMutex <- Mutex.new 0 Config { verbose = True }
+  dbMutex <- Mutex.new 1 DbConn {}
   --
   -- Enter a lockscope
   lockScope \key -> Linear.do
@@ -25,16 +29,16 @@ example = do
     (dbGuard, key) <- lock key dbMutex
     --
     -- Read/write
-    (Ur config, configGuard) <- read configGuard
-    configGuard <- write configGuard config { verbose = False }
+    (Ur config, configGuard) <- Mutex.read configGuard
+    configGuard <- Mutex.write configGuard config { verbose = False }
     --
     -- IO actions
     Internal.unsafeFromSystemIO do
       putStrLn $ "Verbose mode was: " <> show (verbose config)
     --
     -- Release mutexes
-    release configGuard
-    release dbGuard
+    Mutex.release configGuard
+    Mutex.release dbGuard
     Linear.pure (Ur (), key)
 :}
 

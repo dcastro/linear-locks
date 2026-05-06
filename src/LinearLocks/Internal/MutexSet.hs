@@ -49,9 +49,10 @@ data MutexSet set where
 --
 -- Fails if the set contains duplicate mutexes.
 --
--- >>> m1 <- new 1 "a"
--- >>> m2 <- new 1 "b"
--- >>> m3 <- new 1 "c"
+-- >>> import LinearLocks.Mutex qualified as Mutex
+-- >>> m1 <- Mutex.new 1 "a"
+-- >>> m2 <- Mutex.new 1 "b"
+-- >>> m3 <- Mutex.new 1 "c"
 -- >>> set <- newMutexSet (m1, m2, m3)
 newMutexSet :: forall m set. (IsMutexSet set, MonadFail m) => set -> m (MutexSet set)
 newMutexSet set =
