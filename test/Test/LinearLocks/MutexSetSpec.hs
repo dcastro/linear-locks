@@ -11,7 +11,6 @@ import Data.Vector.Unboxed qualified as VU
 import LinearLocks
 import LinearLocks.Internal.Mutex qualified as Internal
 import LinearLocks.Internal.MutexSet qualified as Internal
-import LinearLocks.Mutex (lockMany, newMutexSet)
 import LinearLocks.Mutex qualified as Mutex
 import Prelude.Linear (Ur (..))
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
@@ -26,14 +25,11 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>>   m1 <- Mutex.new 2 "hello"
 -- >>>   m2 <- Mutex.new 3 "world"
 -- >>>   set <- newMutexSet (m1, m2)
--- >>>   lockScope \key -> L.do
--- >>>     ((mg1, mg2), key) <- lockMany key set
--- >>>     Mutex.release mg1
--- >>>     Mutex.release mg2
--- >>>     L.pure (Ur (), key)
+-- >>>   pure ()
 -- >>> :}
 -- ...
--- ... • Cannot satisfy: 0 <= Internal.MutexSetLevel
+-- ... • Couldn't match type ‘2’ with ‘3’
+-- ...     arising from a use of ‘newMutexSet’
 -- ...
 unit_read_mutex_set :: IO ()
 unit_read_mutex_set = do
@@ -125,5 +121,5 @@ unit_sorts_mutexes_deterministically = do
   newMutexSet (m2, m3, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 0, 1]
   newMutexSet (m3, m2, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 1, 0]
   where
-    sortedIndices :: forall set. Mutex.MutexSet set -> VU.Vector Int
+    sortedIndices :: forall set. MutexSet set -> VU.Vector Int
     sortedIndices (Internal.MkMutexSet _ indices) = VU.map (\(Internal.MutexSetIndex i) -> i) indices

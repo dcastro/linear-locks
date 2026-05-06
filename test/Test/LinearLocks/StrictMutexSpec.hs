@@ -4,25 +4,25 @@
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
-module Test.LinearLocks.MutexSpec where
+module Test.LinearLocks.StrictMutexSpec where
 
 import Control.Concurrent (ThreadId, myThreadId)
 import Control.Concurrent.MVar qualified as MVar
 import Control.Exception (SomeException, throwIO, try)
 import Control.Functor.Linear qualified as L
-import Control.Monad (void)
 import Data.Function ((&))
 import GHC.Conc (atomically)
 import LinearLocks
 import LinearLocks.Internal qualified as Internal
-import LinearLocks.Internal.Mutex qualified as Internal
-import LinearLocks.Mutex qualified as Mutex
+import LinearLocks.Internal.StrictMutex qualified as Internal
+import LinearLocks.Mutex.Strict qualified as Mutex
 import ListT qualified
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
 import StmContainers.Set qualified as StmSet
+import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear.Internal qualified as Internal (unsafeFromSystemIO)
-import Test.Hspec.Expectations.Pretty (anyIOException, shouldThrow)
+import Test.Hspec.Expectations.Pretty (anyIOException, errorCall, shouldThrow)
 import "tasty-hunit-compat" Test.Tasty.HUnit
 
 -- | Doctests
@@ -71,7 +71,7 @@ unit_write_mutex = do
   str @?= "world"
 
   str <- MVar.readMVar mutex.var
-  str @?= "world"
+  str.unNF @?= "world"
 
 unit_realeases_mvar :: IO ()
 unit_realeases_mvar = do
@@ -159,7 +159,7 @@ unit_rolls_back_on_exception = do
 
   -- The MVar should have been released, and the original value should have been put back into the MVar.
   mbResult <- MVar.tryTakeMVar mutex.var
-  mbResult @?= Just "hello"
+  mbResult @?= Just (Internal.mkNF "hello")
 
 unit_rolls_back_on_imprecise_exception :: IO ()
 unit_rolls_back_on_imprecise_exception = do
@@ -173,21 +173,35 @@ unit_rolls_back_on_imprecise_exception = do
 
   -- The MVar should have been released, and the original value should have been put back into the MVar.
   mbResult <- MVar.tryTakeMVar mutex.var
-  mbResult @?= Just "hello"
+  mbResult @?= Just (Internal.mkNF "hello")
 
-unit_new_doesnt_evaluate_value_to_normal_form :: IO ()
-unit_new_doesnt_evaluate_value_to_normal_form = do
-  -- This should not throw, the "error" thunk should not be evaluated
-  void $ Mutex.new @[Int] 0 [1, 2, error "oops", 4]
+unit_new_evaluates_value_to_normal_form :: IO ()
+unit_new_evaluates_value_to_normal_form = do
+  Mutex.new @[Int] 0 [1, 2, error "oops", 4]
+    `shouldThrow` errorCall "oops"
 
-unit_release_doesnt_evaluate_value_to_normal_form :: IO ()
-unit_release_doesnt_evaluate_value_to_normal_form = do
+unit_release_evaluates_value_to_normal_form :: IO ()
+unit_release_evaluates_value_to_normal_form = do
   mutex <- Mutex.new @[Int] 0 [1]
 
-  lockScope \key -> L.do
-    (mg, key) <- lock key mutex
-    -- This should not throw, the "error" thunk should not be evaluated
-    mg <- Mutex.write mg [1, 2, error "oops", 4]
-    -- This should not throw
-    Mutex.release mg
-    L.pure (Ur (), key)
+  logs <- MVar.newMVar @[String] []
+  let logMsg :: String -> RIO ()
+      logMsg msg = Internal.unsafeFromSystemIO do
+        MVar.modifyMVar_ logs \logs -> pure (logs <> [msg])
+
+  let run =
+        lockScope \key -> L.do
+          (mg, key) <- lock key mutex
+          logMsg "ran 'lock'"
+          mg <- Mutex.write mg [1, 2, error "oops", 4]
+          logMsg "ran 'write'"
+          Mutex.release mg
+          logMsg "ran 'release'"
+          L.pure (Ur (), key)
+
+  run `shouldThrow` errorCall "oops"
+
+  -- The exception should be thrown WHILE running `release`.
+  -- `write` should NOT throw.
+  msgs <- MVar.takeMVar logs
+  msgs @?= ["ran 'lock'", "ran 'write'"]

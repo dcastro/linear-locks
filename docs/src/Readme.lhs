@@ -45,7 +45,6 @@ And the following imports:
 
 \begin{code}
 import LinearLocks
-import LinearLocks.Mutex (lock, lockMany, newMutexSet)
 import LinearLocks.Mutex qualified as Mutex
 
 -- From `linear-base`:

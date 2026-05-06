@@ -4,15 +4,17 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE RequiredTypeArguments #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
-module LinearLocks.Internal.Mutex where
+module LinearLocks.Internal.StrictMutex where
 
 import Control.Concurrent (MVar)
 import Control.Concurrent qualified as MVar
+import Control.DeepSeq (NFData, force)
 import Control.Functor.Linear qualified as L
 import Data.Atomics.Counter qualified as Atomic
 import Data.IntMap.Strict qualified as IntMap
@@ -25,14 +27,13 @@ import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear qualified as RIO
 import System.IO.Resource.Linear.Internal qualified as Internal
 
--- | A deadlock-free mutex.
---
--- This implementation is lazy.
--- This means that if you place an expensive unevaluated thunk inside a t`Mutex`,
--- it will be evaluated by the thread that consumes it, not the thread that produced it.
--- To avoid this, use "LinearLocks.Mutex.Strict" instead.
+-- | A strict version of "LinearLocks.Mutex".
 data Mutex (lvl :: Nat) a = Mutex
-  { var :: MVar a,
+  { -- NOTE: we're using `MVar (NF a)` instead of e.g. `Control.Concurrent.MVar.Strict.MVar` (from the `strict-concurrency` package)
+    -- because we don't want to require `NFData` when taking the mvar's (already evaluated) value and putting it right back in, unmodified.
+    --
+    -- In other words, this allows `lock` to not require `NFData` to setup the "release on exception" action.
+    var :: MVar (NF a),
     -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.newMutexSet'.
     id :: MutexId
   }
@@ -53,11 +54,11 @@ data MutexResource a = MutexResource
   { -- | The value that was read from the `MVar` when it was acquired.
     --
     -- If an exception occurs before the mutex guard is manually released, this value will be put back into the `MVar`.
-    initialValue :: a,
-    var :: MVar a
+    initialValue :: (NF a),
+    var :: MVar (NF a)
   }
 
-instance Lockable (Mutex lvl a) where
+instance (NFData a) => Lockable (Mutex lvl a) where
   type Guard (Mutex lvl a) = MutexGuard a
   type Level (Mutex lvl a) = lvl
 
@@ -70,7 +71,7 @@ instance Lockable (Mutex lvl a) where
     L.pure
       MutexGuard
         { resource = Internal.UnsafeResource key guard,
-          newValue = Ur guard.initialValue
+          newValue = Ur guard.initialValue.unNF
         }
     where
       acq :: L.IO (Ur (MutexResource a))
@@ -83,7 +84,7 @@ instance Lockable (Mutex lvl a) where
       rel (MutexResource initialValue var) =
         L.void L.$ L.fromSystemIO L.$ MVar.putMVar var initialValue
 
-instance Releasable (MutexGuard a) where
+instance (NFData a) => Releasable (MutexGuard a) where
   doRelease = release
 
 read :: MutexGuard a %1 -> RIO (Ur a, MutexGuard a)
@@ -94,13 +95,17 @@ read (MutexGuard resource (Ur newValue)) =
 --
 -- If an exception is thrown after `write` but before `release`,
 -- the mutex will be rolled back to its original state.
+--
+-- Note: The value will only be evaluated to Normal Form when the mutex is released, not when it's written.
 write :: MutexGuard a %1 -> a -> RIO (MutexGuard a)
 write (MutexGuard resource (Ur _)) newValue =
   L.pure (MutexGuard {resource, newValue = Ur newValue})
 
 -- | Releases a mutex and commits the latest value set by `write`.
-release :: MutexGuard a %1 -> RIO ()
-release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
+--
+-- Fully evaluates the value to Normal Form before releasing the mutex.
+release :: (NFData a) => MutexGuard a %1 -> RIO ()
+release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur (mkNF -> !newValue))) = L.do
   -- Note: the resource was initially registered with a release action that puts the original value back into the MVar.
   -- That release action should be run if an exception is thrown before `release` is called,
   -- which ensures the MVar will "rollback" to its original state.
@@ -117,8 +122,10 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
 --
 -- It does not have to be unique, multiple mutexes can have the same level.
 -- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
-new :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
-new _lvl a = do
+--
+-- This function fully evaluates the initial value to Normal Form.
+new :: forall a. (NFData a) => forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
+new _lvl (mkNF -> !a) = do
   var <- MVar.newMVar a
   newId <- Atomic.incrCounter 1 mutexIdCounter
   pure
@@ -139,3 +146,13 @@ release' (Internal.UnsafeResource key _) release = Internal.RIO (\st -> L.mask_ 
       Ur (Internal.ReleaseMap releaseMap) <- L.readIORef rrm
       () <- release
       L.writeIORef rrm (Internal.ReleaseMap (IntMap.delete key releaseMap))
+
+-- | A wrapper type to force the contents to be fully evaluated before being put back into the MVar.
+--
+-- NOTE: `NF` will only turn "shallow evaluation" into "deep evaluation".
+-- You must still use a bang pattern on `NF` to force it.
+newtype NF a = UnsafeNF {unNF :: a}
+  deriving newtype (Show, Eq)
+
+mkNF :: (NFData a) => a -> NF a
+mkNF = UnsafeNF . force

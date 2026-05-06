@@ -21,9 +21,10 @@ import Data.Vector.Generic.Mutable qualified as VGM
 import Data.Vector.Primitive qualified as VP
 import Data.Vector.Unboxed qualified as VU
 import Focus qualified
+import GHC.Base (Type)
 import GHC.Conc (atomically)
 import GHC.IO (unsafePerformIO)
-import GHC.TypeLits (Nat)
+import GHC.TypeLits (Nat, type (+), type (<=))
 import Prelude.Linear (Ur (..))
 import StmContainers.Set qualified as StmSet
 import System.IO.Resource.Linear (RIO)
@@ -112,6 +113,35 @@ data NestedLocksScopeException = NestedLocksScopeException
 
 instance Exception NestedLocksScopeException where
   displayException NestedLocksScopeException = "Nested lock scopes are not allowed"
+
+-- | Acquire a mutex.
+-- Consumes the key and return a new key (with an increased level).
+lock ::
+  forall keyLvl lockable.
+  (Lockable lockable) =>
+  (keyLvl <= Level lockable) =>
+  MutexKey keyLvl %1 ->
+  lockable ->
+  RIO (Guard lockable, MutexKey (Level lockable + 1))
+lock UnsafeMutexKey m = L.do
+  guard <- unsafeLock m
+  L.pure (guard, UnsafeMutexKey)
+
+class (Releasable (Guard lockable)) => Lockable lockable where
+  type Guard lockable :: Type
+  type Level lockable :: Nat
+
+  getId :: lockable -> MutexId
+
+  -- | This is marked as unsafe because it does not consume a `MutexKey`.
+  unsafeLock :: lockable -> RIO (Guard lockable)
+
+class Releasable guard where
+  -- Design decision: `doRelease` generalizes over releasing any kind of mutex, but we don't export it.
+  -- We only export the monomorphic `release` functions for each mutex type, because they might have
+  -- important notes in their haddock docs (e.g. `StrictMutex.release` does deep evaluation and might throw an exception as a result),
+  -- so it's important those docs are easily discoverable and not hidden behind a more general `doRelease` function.
+  doRelease :: guard %1 -> RIO ()
 
 ----------------------------------------------------------------------------
 -- Global variables

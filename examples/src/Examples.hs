@@ -7,7 +7,6 @@ module Examples where
 import Control.Functor.Linear qualified as Linear
 import Control.Monad (replicateM_)
 import LinearLocks
-import LinearLocks.Mutex (lock, lockMany, newMutexSet)
 import LinearLocks.Mutex qualified as Mutex
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as Linear hiding (IO)
