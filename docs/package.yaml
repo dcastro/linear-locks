@@ -8,10 +8,6 @@ copyright: '2026 Diogo Castro'
 
 library:
   source-dirs: src
-  ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
   dependencies:
     - base
     - linear-base
