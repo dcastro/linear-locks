@@ -98,14 +98,14 @@ read (MutexGuard resource (Ur newValue)) =
 -- If an exception is thrown after `write` but before `release`,
 -- the mutex will be rolled back to its original state.
 --
--- Note: The value will only be evaluated to NF when the mutex is released, not when it's written.
+-- Note: The value will only be evaluated to Normal Form when the mutex is released, not when it's written.
 write :: MutexGuard a %1 -> a -> RIO (MutexGuard a)
 write (MutexGuard resource (Ur _)) newValue =
   L.pure (MutexGuard {resource, newValue = Ur newValue})
 
 -- | Releases a mutex and commits the latest value set by `write`.
 --
--- Fully evaluates the value before releasing the mutex.
+-- Fully evaluates the value to Normal Form before releasing the mutex.
 release :: (NFData a) => MutexGuard a %1 -> RIO ()
 release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur (mkNF -> !newValue))) = L.do
   -- Note: the resource was initially registered with a release action that puts the original value back into the MVar.
@@ -125,7 +125,7 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur (mkNF -> !newValue)))
 -- It does not have to be unique, multiple mutexes can have the same level.
 -- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
 --
--- This function fully evaluates the initial value.
+-- This function fully evaluates the initial value to Normal Form.
 new :: forall a. (NFData a) => forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
 new _lvl (mkNF -> !a) = do
   var <- MVar.newMVar a

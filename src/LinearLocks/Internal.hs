@@ -137,6 +137,10 @@ class (Releasable (Guard lockable)) => Lockable lockable where
   unsafeLock :: lockable -> RIO (Guard lockable)
 
 class Releasable guard where
+  -- Design decision: `doRelease` generalizes over releasing any kind of mutex, but we don't export it.
+  -- We only export the monomorphic `release` functions for each mutex type, because they might have
+  -- important notes in their haddock docs (e.g. `StrictMutex.release` does deep evaluation and might throw an exception as a result),
+  -- so it's important those docs are easily discoverable and not hidden behind a more general `doRelease` function.
   doRelease :: guard %1 -> RIO ()
 
 ----------------------------------------------------------------------------
