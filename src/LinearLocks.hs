@@ -1,7 +1,7 @@
 {- ORMOLU_DISABLE -}
 {- |
 
-@linear-locks@ provides a locking primitive t`Mutex` that is statically guaranteed to not lead to deadlocks.
+@linear-locks@ provides locking primitives that are statically guaranteed to not lead to deadlocks.
 
 An in-depth description and tutorial can be found in the [README](https://github.com/dcastro/linear-locks#readme).
 

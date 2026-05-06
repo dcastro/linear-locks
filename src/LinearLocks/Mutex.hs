@@ -1,7 +1,7 @@
 module LinearLocks.Mutex
   ( -- * Mutex
-    new,
     Mutex,
+    new,
 
     -- * Mutex guards
     MutexGuard,

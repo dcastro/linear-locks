@@ -28,9 +28,9 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 -- | A deadlock-free mutex.
 --
 -- This implementation is lazy.
--- This means that if you place an expensive unevaluated thunk inside a `Mutex`,
+-- This means that if you place an expensive unevaluated thunk inside a t`Mutex`,
 -- it will be evaluated by the thread that consumes it, not the thread that produced it.
--- To avoid this, use t'LinearLocks.Mutex.Strict.Mutex' instead.
+-- To avoid this, use "LinearLocks.Mutex.Strict" instead.
 data Mutex (lvl :: Nat) a = Mutex
   { var :: MVar a,
     -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.newMutexSet'.
