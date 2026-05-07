@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE NoFieldSelectors #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 module LinearLocks.Internal.MutexSet where
