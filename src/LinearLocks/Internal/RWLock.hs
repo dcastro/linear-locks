@@ -14,7 +14,6 @@ import Control.Concurrent qualified as MVar
 import Control.Concurrent.ReadWriteLock qualified as Conc
 import Control.Functor.Linear qualified as L
 import Control.Monad.IO.Class.Linear qualified as L
-import Data.Atomics.Counter qualified as Atomic
 import Data.IORef (IORef)
 import Data.IORef qualified as IORef
 import Data.IntMap.Strict qualified as IntMap
@@ -47,13 +46,8 @@ new :: forall a. forall (lvl :: Nat) -> a -> IO (RWLock lvl a)
 new _lvl a = do
   lock <- Conc.new
   var <- IORef.newIORef a
-  newId <- Atomic.incrCounter 1 mutexIdCounter
-  pure
-    RWLock
-      { var,
-        lock,
-        id = MutexId newId
-      }
+  id <- nextMutexId
+  pure RWLock {var, lock, id}
 
 class Readable guard where
   type Elem guard :: Type

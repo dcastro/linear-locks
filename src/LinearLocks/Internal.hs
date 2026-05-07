@@ -169,6 +169,12 @@ mutexIdCounter :: AtomicCounter
 mutexIdCounter =
   unsafePerformIO $ Atomic.newCounter 0
 
+-- | Generates the next unique mutex ID.
+nextMutexId :: IO MutexId
+nextMutexId = do
+  newId <- Atomic.incrCounter 1 mutexIdCounter
+  pure (MutexId newId)
+
 -- Only provide this orphan instance for linear-base <= 0.7.0
 -- The next release will come with this instance built-in: https://github.com/tweag/linear-base/pull/505
 #if !MIN_VERSION_linear_base(0,7,1)

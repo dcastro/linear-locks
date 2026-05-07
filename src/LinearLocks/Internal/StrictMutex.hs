@@ -14,7 +14,6 @@ import Control.Concurrent (MVar)
 import Control.Concurrent qualified as MVar
 import Control.DeepSeq (NFData, force)
 import Control.Functor.Linear qualified as L
-import Data.Atomics.Counter qualified as Atomic
 import Data.IntMap.Strict qualified as IntMap
 import GHC.TypeLits (Nat)
 import LinearLocks.Internal
@@ -125,12 +124,8 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur (mkNF -> !newValue)))
 new :: forall a. (NFData a) => forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
 new _lvl (mkNF -> !a) = do
   var <- MVar.newMVar a
-  newId <- Atomic.incrCounter 1 mutexIdCounter
-  pure
-    Mutex
-      { var = var,
-        id = MutexId newId
-      }
+  id <- nextMutexId
+  pure Mutex {var, id}
 
 ----------------------------------------------------------------------------
 -- Utils
