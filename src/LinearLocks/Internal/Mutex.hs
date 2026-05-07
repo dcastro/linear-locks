@@ -94,7 +94,7 @@ write :: MutexGuard a %1 -> a -> RIO (MutexGuard a)
 write (MutexGuard resource (Ur _)) newValue =
   L.pure (MutexGuard {resource, newValue = Ur newValue})
 
--- | Releases a mutex and commits the latest value set by `write`.
+-- | Releases the mutex and commits the latest value set by `write`.
 release :: MutexGuard a %1 -> RIO ()
 release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
   -- Note: the resource was initially registered with a release action that puts the original value back into the MVar.

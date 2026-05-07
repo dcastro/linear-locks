@@ -97,7 +97,7 @@ write :: MutexGuard a %1 -> a -> RIO (MutexGuard a)
 write (MutexGuard resource (Ur _)) newValue =
   L.pure (MutexGuard {resource, newValue = Ur newValue})
 
--- | Releases a mutex and commits the latest value set by `write`.
+-- | Releases the mutex and commits the latest value set by `write`.
 --
 -- Fully evaluates the value to Normal Form before releasing the mutex.
 release :: (NFData a) => MutexGuard a %1 -> RIO ()
