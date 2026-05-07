@@ -6,16 +6,20 @@
 {-# LANGUAGE RequiredTypeArguments #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 module LinearLocks.Internal.RWLock where
 
 import Control.Concurrent (MVar)
 import Control.Concurrent qualified as MVar
+import Control.Concurrent.ReadWriteLock qualified as Conc
 import Control.Functor.Linear qualified as L
+import Control.Monad.IO.Class.Linear qualified as L
 import Data.Atomics.Counter qualified as Atomic
+import Data.IORef (IORef)
+import Data.IORef qualified as IORef
 import Data.IntMap.Strict qualified as IntMap
+import Data.Kind (Type)
 import GHC.TypeLits (Nat)
 import LinearLocks.Internal
 import Prelude.Linear (Ur (..))
@@ -27,86 +31,14 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 
 -- | A deadlock-free lock that allows multiple concurrent readers or a single writer.
 data RWLock (lvl :: Nat) a = RWLock
-  { var :: MVar a,
+  { var :: IORef a,
+    -- | A read-write lock gating access to the `IORef`.
+    lock :: Conc.RWLock,
     -- | The unique ID for this lock. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.newMutexSet'.
     id :: MutexId
   }
 
--- | A t`RWLockGuard` represents the ownership of a locked RWLock.
---
--- It can be used to read/write the mutex while the lock is held.
---
--- It must be released with `release`, after which the guard will be consumed and can no longer be used.
-data RWLockGuard a = RWLockGuard
-  { resource :: RIO.Resource (RWLockResource a),
-    -- | The latest value set by the user.
-    -- This will be comitted to the MVar when the guard is released.
-    newValue :: Ur a
-  }
-
-data RWLockResource a = RWLockResource
-  { -- | The value that was read from the `MVar` when it was acquired.
-    --
-    -- If an exception occurs before the mutex guard is manually released, this value will be put back into the `MVar`.
-    initialValue :: a,
-    var :: MVar a
-  }
-
-instance Lockable (RWLock lvl a) where
-  type Guard (RWLock lvl a) = RWLockGuard a
-  type Level (RWLock lvl a) = lvl
-
-  getId m = m.id
-
-  unsafeLock :: forall lvl a. RWLock lvl a -> RIO (RWLockGuard a)
-  unsafeLock m = L.do
-    -- Note: we have to match on `UnsafeResource` so we can extract the `guard.initialValue`
-    Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
-    L.pure
-      RWLockGuard
-        { resource = Internal.UnsafeResource key guard,
-          newValue = Ur guard.initialValue
-        }
-    where
-      acq :: L.IO (Ur (RWLockResource a))
-      acq = L.do
-        Ur a <- L.fromSystemIOU L.$ MVar.takeMVar m.var
-        L.pure (Ur (RWLockResource {initialValue = a, var = m.var}))
-
-      -- The action to run if an exception is thrown before the guard is manually released with `release`.
-      rel :: RWLockResource a -> L.IO ()
-      rel (RWLockResource initialValue var) =
-        L.void L.$ L.fromSystemIO L.$ MVar.putMVar var initialValue
-
-instance Releasable (RWLockGuard a) where
-  doRelease = release
-
-read :: RWLockGuard a %1 -> RIO (Ur a, RWLockGuard a)
-read (RWLockGuard resource (Ur newValue)) =
-  L.pure (Ur newValue, RWLockGuard {resource, newValue = Ur newValue})
-
--- | Writes a new value to the mutex, which will be committed when the guard is released.
---
--- If an exception is thrown after `write` but before `release`,
--- the mutex will be rolled back to its original state.
-write :: RWLockGuard a %1 -> a -> RIO (RWLockGuard a)
-write (RWLockGuard resource (Ur _)) newValue =
-  L.pure (RWLockGuard {resource, newValue = Ur newValue})
-
--- | Releases a mutex and commits the latest value set by `write`.
-release :: RWLockGuard a %1 -> RIO ()
-release (RWLockGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
-  -- Note: the resource was initially registered with a release action that puts the original value back into the MVar.
-  -- That release action should be run if an exception is thrown before `release` is called,
-  -- which ensures the MVar will "rollback" to its original state.
-  --
-  -- However, if `release` is called explicitly by the user,
-  -- we want to update the release action to put `newValue` back into the MVar instead.
-  -- Therefore, we must call `release'` with a _new release action_ that puts `newValue` into the MVar.
-  release' (Internal.UnsafeResource key mr) L.do
-    L.void L.$ L.fromSystemIO L.$ MVar.putMVar mr.var newValue
-
--- | Creates a new mutex with the given initial value.
+-- | Creates a new read-write lock with the given initial value.
 --
 -- The @lvl@ parameter determines the order in which this mutex can be acquired relative to other mutexes.
 --
@@ -114,23 +46,76 @@ release (RWLockGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
 -- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
 new :: forall a. forall (lvl :: Nat) -> a -> IO (RWLock lvl a)
 new _lvl a = do
-  var <- MVar.newMVar a
+  lock <- Conc.new
+  var <- IORef.newIORef a
   newId <- Atomic.incrCounter 1 mutexIdCounter
   pure
     RWLock
-      { var = var,
+      { var,
+        lock,
         id = MutexId newId
       }
 
+class Readable guard where
+  type Elem guard :: Type
+  read :: guard %1 -> RIO (Ur (Elem guard), guard)
+
 ----------------------------------------------------------------------------
--- Utils
+-- Read mode
 ----------------------------------------------------------------------------
 
--- | Similar to 'System.IO.Resource.Linear.release', except it uses a different release action than the one registered by 'System.IO.Resource.Linear.unsafeAcquire'.
-release' :: RIO.Resource a %1 -> L.IO () -> RIO ()
-release' (Internal.UnsafeResource key _) release = Internal.RIO (\st -> L.mask_ (releaseWith key st))
-  where
-    releaseWith key rrm = L.do
-      Ur (Internal.ReleaseMap releaseMap) <- L.readIORef rrm
-      () <- release
-      L.writeIORef rrm (Internal.ReleaseMap (IntMap.delete key releaseMap))
+-- | A t`ReadGuard` represents the ownership of a RWLock in read mode.
+--
+-- It must be released with `release`, after which the guard will be consumed and can no longer be used.
+data ReadGuard a = ReadGuard
+  { resource :: RIO.Resource ReadResource,
+    -- | The value that was read when the lock was acquired.
+    readValue :: Ur a
+  }
+
+newtype ReadResource = ReadResource
+  { lock :: Conc.RWLock
+  }
+
+newtype AsRead lvl a = AsRead (RWLock lvl a)
+
+instance Lockable (AsRead lvl a) where
+  type Guard (AsRead lvl a) = ReadGuard a
+  type Level (AsRead lvl a) = lvl
+
+  getId (AsRead m) = m.id
+
+  unsafeLock :: forall lvl a. AsRead lvl a -> RIO (ReadGuard a)
+  unsafeLock (AsRead m) = L.do
+    -- Acquire the rwlock in "read mode" and *then* read the `IORef`.
+    resource <- RIO.unsafeAcquire acq rel
+    Ur readValue <- L.liftSystemIOU (IORef.readIORef m.var)
+    L.pure
+      ReadGuard
+        { resource = resource,
+          readValue = Ur readValue
+        }
+    where
+      acq :: L.IO (Ur ReadResource)
+      acq = L.do
+        L.fromSystemIO L.$ Conc.acquireRead m.lock
+        L.pure (Ur (ReadResource {lock = m.lock}))
+
+      rel :: ReadResource -> L.IO ()
+      rel (ReadResource lock) =
+        L.fromSystemIO L.$ Conc.releaseRead lock
+
+instance Releasable (ReadGuard a) where
+  doRelease = releaseRead
+
+instance Readable (ReadGuard a) where
+  type Elem (ReadGuard a) = a
+
+  read :: ReadGuard a %1 -> RIO (Ur a, ReadGuard a)
+  read (ReadGuard resource (Ur readValue)) =
+    L.pure (Ur readValue, ReadGuard {resource, readValue = Ur readValue})
+
+-- | Releases the lock.
+releaseRead :: ReadGuard a %1 -> RIO ()
+releaseRead (ReadGuard resource (Ur _readValue)) =
+  RIO.release resource

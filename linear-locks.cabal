@@ -31,6 +31,7 @@ library
       LinearLocks.Internal
       LinearLocks.Internal.Mutex
       LinearLocks.Internal.MutexSet
+      LinearLocks.Internal.RWLock
       LinearLocks.Internal.StrictMutex
       LinearLocks.Mutex
       LinearLocks.Mutex.Strict
@@ -48,6 +49,7 @@ library
   build-depends:
       atomic-primops
     , base
+    , concurrent-extra
     , containers
     , deepseq
     , focus

@@ -59,6 +59,7 @@ library:
     - vector-algorithms
     - containers
     - deepseq
+    - concurrent-extra
 
 tests:
   linear-locks-test:
