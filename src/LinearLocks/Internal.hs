@@ -6,7 +6,6 @@
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE RequiredTypeArguments #-}
 {-# LANGUAGE NoFieldSelectors #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_HADDOCK not-home #-}
 

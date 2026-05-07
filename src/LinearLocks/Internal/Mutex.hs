@@ -1,4 +1,3 @@
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LinearTypes #-}
 {-# LANGUAGE OverloadedRecordDot #-}
@@ -6,7 +5,6 @@
 {-# LANGUAGE RequiredTypeArguments #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 module LinearLocks.Internal.Mutex where
