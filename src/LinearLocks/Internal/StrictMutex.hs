@@ -14,7 +14,6 @@ import Control.Concurrent (MVar)
 import Control.Concurrent qualified as MVar
 import Control.DeepSeq (NFData, force)
 import Control.Functor.Linear qualified as L
-import Data.IntMap.Strict qualified as IntMap
 import GHC.TypeLits (Nat)
 import LinearLocks.Internal
 import Prelude.Linear (Ur (..))
@@ -130,15 +129,6 @@ new _lvl (mkNF -> !a) = do
 ----------------------------------------------------------------------------
 -- Utils
 ----------------------------------------------------------------------------
-
--- | Similar to 'System.IO.Resource.Linear.release', except it uses a different release action than the one registered by 'System.IO.Resource.Linear.unsafeAcquire'.
-release' :: RIO.Resource a %1 -> L.IO () -> RIO ()
-release' (Internal.UnsafeResource key _) release = Internal.RIO (\st -> L.mask_ (releaseWith key st))
-  where
-    releaseWith key rrm = L.do
-      Ur (Internal.ReleaseMap releaseMap) <- L.readIORef rrm
-      () <- release
-      L.writeIORef rrm (Internal.ReleaseMap (IntMap.delete key releaseMap))
 
 -- | A wrapper type to force the contents to be fully evaluated before being put back into the MVar.
 --
