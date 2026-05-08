@@ -104,6 +104,7 @@ newtype Resource = Resource
   { lock :: Conc.RWLock
   }
 
+-- | Newtype used to add t'RWLock's to t'LinearLocks.LockSet's.
 newtype AsRead lvl a = AsRead (RWLock lvl a)
 
 instance Acquirable (AsRead lvl a) where
@@ -170,6 +171,7 @@ data WriteGuard a = WriteGuard
     var :: Ur (IORef a)
   }
 
+-- | Newtype used to add t'RWLock's to t'LinearLocks.LockSet's.
 newtype AsWrite lvl a = AsWrite (RWLock lvl a)
 
 instance Acquirable (AsWrite lvl a) where
