@@ -31,7 +31,7 @@ data Mutex (lvl :: Nat) a = Mutex
     -- In other words, this allows `lock` to not require `NFData` to setup the "release on exception" action.
     var :: MVar (NF a),
     -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.newMutexSet'.
-    id :: MutexId
+    id :: LockId
   }
 
 -- | A t`MutexGuard` represents the ownership of a locked mutex.
@@ -123,7 +123,7 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur (mkNF -> !newValue)))
 new :: forall a. (NFData a) => forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
 new _lvl (mkNF -> !a) = do
   var <- MVar.newMVar a
-  id <- nextMutexId
+  id <- nextLockId
   pure Mutex {var, id}
 
 ----------------------------------------------------------------------------

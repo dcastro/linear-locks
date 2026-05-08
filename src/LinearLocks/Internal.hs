@@ -51,18 +51,18 @@ data LockKey (lvl :: Nat)
     UnsafeLockKey
 
 -- | A unique identifier for a mutex.
-newtype MutexId = MutexId Int
+newtype LockId = LockId Int
   deriving newtype (Eq, Ord, Show)
 
-newtype instance VU.MVector s MutexId = MV_MutexId (VP.MVector s Int)
+newtype instance VU.MVector s LockId = MV_LockId (VP.MVector s Int)
 
-newtype instance VU.Vector MutexId = V_MutexId (VP.Vector Int)
+newtype instance VU.Vector LockId = V_LockId (VP.Vector Int)
 
-deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector MutexId
+deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector LockId
 
-deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexId
+deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector LockId
 
-instance VU.Unbox MutexId
+instance VU.Unbox LockId
 
 -- | Creates a new lock scope with a key of level 0, and runs the given function with it.
 --  The key can be used to acquire locks with `acquire` and `LinearLocks.acquireMany`.
@@ -140,7 +140,7 @@ class (Releasable (Guard acquirable)) => Acquirable acquirable where
   type Guard acquirable :: Type
   type Level acquirable :: Nat
 
-  getId :: acquirable -> MutexId
+  getId :: acquirable -> LockId
 
   -- | This is marked as unsafe because it does not consume a `LockKey`.
   unsafeAcquire :: acquirable -> RIO (Guard acquirable)
@@ -164,17 +164,17 @@ lockScopes =
   -- See: https://wiki.haskell.org/index.php?oldid=64612
   unsafePerformIO StmSet.newIO
 
--- | An atomic counter used to generate unique IDs for mutexes.
-{-# NOINLINE mutexIdCounter #-}
-mutexIdCounter :: AtomicCounter
-mutexIdCounter =
+-- | An atomic counter used to generate unique IDs for locks.
+{-# NOINLINE lockIdCounter #-}
+lockIdCounter :: AtomicCounter
+lockIdCounter =
   unsafePerformIO $ Atomic.newCounter 0
 
 -- | Generates the next unique mutex ID.
-nextMutexId :: IO MutexId
-nextMutexId = do
-  newId <- Atomic.incrCounter 1 mutexIdCounter
-  pure (MutexId newId)
+nextLockId :: IO LockId
+nextLockId = do
+  newId <- Atomic.incrCounter 1 lockIdCounter
+  pure (LockId newId)
 
 -- Only provide this orphan instance for linear-base <= 0.7.0
 -- The next release will come with this instance built-in: https://github.com/tweag/linear-base/pull/505

@@ -30,7 +30,7 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 data Mutex (lvl :: Nat) a = Mutex
   { var :: MVar a,
     -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.newMutexSet'.
-    id :: MutexId
+    id :: LockId
   }
 
 -- | A t`MutexGuard` represents the ownership of a locked mutex.
@@ -116,5 +116,5 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
 new :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
 new _lvl a = do
   var <- MVar.newMVar a
-  id <- nextMutexId
+  id <- nextLockId
   pure Mutex {var, id}

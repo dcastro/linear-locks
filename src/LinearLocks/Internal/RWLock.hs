@@ -59,7 +59,7 @@ data RWLock (lvl :: Nat) a = RWLock
     -- | A read-write lock gating access to the `IORef`.
     lock :: Conc.RWLock,
     -- | The unique ID for this lock. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate locks, see 'LinearLocks.newMutexSet'.
-    id :: MutexId
+    id :: LockId
   }
 
 -- | Creates a new read-write lock with the given initial value.
@@ -72,7 +72,7 @@ new :: forall a. forall (lvl :: Nat) -> a -> IO (RWLock lvl a)
 new _lvl a = do
   lock <- Conc.new
   var <- IORef.newIORef a
-  id <- nextMutexId
+  id <- nextLockId
   pure RWLock {var, lock, id}
 
 class Readable guard where

@@ -74,7 +74,7 @@ newMutexSet set =
 
       pure (hasDups, sortedIndices)
 
-    hasDuplicateIds :: VUM.MVector (VUM.PrimState (ST s)) (MutexId, MutexSetIndex) -> ST s Bool
+    hasDuplicateIds :: VUM.MVector (VUM.PrimState (ST s)) (LockId, MutexSetIndex) -> ST s Bool
     hasDuplicateIds idsAndIndices = do
       let go i =
             if i >= VUM.length idsAndIndices - 1
@@ -101,7 +101,7 @@ class IsMutexSet set where
   type MutexGuardSet set :: Type
   type MutexSetLevel set :: Nat
 
-  collectIds :: set -> [MutexId]
+  collectIds :: set -> [LockId]
 
   -- | Acquires the locks in the set in the given order.
   -- E.g. `acquireInOrder [1, 3, 2]` will acquire the first mutex in the set, then the third, then the second.
