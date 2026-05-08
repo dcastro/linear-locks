@@ -27,16 +27,16 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>>   m1 <- RWLock.new 2 "hello"
 -- >>>   m2 <- RWLock.new 4 "world"
 -- >>>   lockScope \key -> L.do
--- >>>     (mg2, key) <- RWLock.acquireRead key m2
--- >>>     (mg1, key) <- RWLock.acquireRead key m1
--- >>>     RWLock.releaseRead mg1
--- >>>     RWLock.releaseRead mg2
+-- >>>     (g2, key) <- RWLock.acquireRead key m2
+-- >>>     (g1, key) <- RWLock.acquireRead key m1
+-- >>>     RWLock.releaseRead g1
+-- >>>     RWLock.releaseRead g2
 -- >>>     L.pure (Ur (), key)
 -- >>> :}
 -- ...
 -- ... • Cannot satisfy: 5 <= 2
 -- ... • In a stmt of a 'do' block:
--- ... (mg1, key) <- RWLock.acquireRead key m1
+-- ... (g1, key) <- RWLock.acquireRead key m1
 -- ...
 unit_read_mutex :: IO ()
 unit_read_mutex = do

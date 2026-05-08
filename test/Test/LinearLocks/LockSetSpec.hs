@@ -134,18 +134,18 @@ unit_sets_can_have_mixed_lock_types = do
   set <- newLockSet (m1, m2, RWLock.AsRead (m3))
 
   lockScope \key -> L.do
-    ((mg1, mg2, mg3), key) <- acquireMany key set
+    ((g1, g2, g3), key) <- acquireMany key set
 
-    (Ur res1, mg1) <- StrictMutex.read mg1
-    (Ur res2, mg2) <- Mutex.read mg2
-    (Ur res3, mg3) <- RWLock.read mg3
+    (Ur res1, g1) <- StrictMutex.read g1
+    (Ur res2, g2) <- Mutex.read g2
+    (Ur res3, g3) <- RWLock.read g3
 
     L.liftSystemIO do
       res1 @?= "hello"
       res2 @?= 99
       res3 @?= True
 
-    StrictMutex.release mg1
-    Mutex.release mg2
-    RWLock.releaseRead mg3
+    StrictMutex.release g1
+    Mutex.release g2
+    RWLock.releaseRead g3
     L.pure (Ur (), key)
