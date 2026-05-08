@@ -90,12 +90,12 @@ newMutexSet set =
 acquireMany ::
   forall keyLvl mutexLvl set.
   (IsMutexSet set, mutexLvl ~ MutexSetLevel set, keyLvl <= mutexLvl) =>
-  MutexKey keyLvl %1 ->
+  LockKey keyLvl %1 ->
   MutexSet set ->
-  RIO (MutexGuardSet set, MutexKey (mutexLvl + 1))
-acquireMany UnsafeMutexKey (MkMutexSet set indices) = L.do
+  RIO (MutexGuardSet set, LockKey (mutexLvl + 1))
+acquireMany UnsafeLockKey (MkMutexSet set indices) = L.do
   guards <- acquireInOrder indices set
-  L.pure (guards, UnsafeMutexKey)
+  L.pure (guards, UnsafeLockKey)
 
 class IsMutexSet set where
   type MutexGuardSet set :: Type

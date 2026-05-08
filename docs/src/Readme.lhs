@@ -77,22 +77,22 @@ Each mutex is assigned a "level" at compile-time.
 
 We can then enter a "lock scope".
 
-We're given a `MutexKey lvl` that we can use to acquire mutexes.
-The key starts off with level 0 (`MutexKey 0`) and it can be used to acquire any mutex with level 0 or above.
+We're given a `LockKey lvl` that we can use to acquire mutexes.
+The key starts off with level 0 (`LockKey 0`) and it can be used to acquire any mutex with level 0 or above.
 
-Every time we acquire a mutex, the key's level increases. Acquiring `Mutex 0 Config` consumes our `MutexKey 0` and gives us a `MutexKey 1` back. Acquiring `Mutex 1 DbConn` then gives us a `MutexKey 2`.
+Every time we acquire a mutex, the key's level increases. Acquiring `Mutex 0 Config` consumes our `LockKey 0` and gives us a `LockKey 1` back. Acquiring `Mutex 1 DbConn` then gives us a `LockKey 2`.
 
 
 \begin{code}
   lockScope \key -> Linear.do
-    --                          ↓ Consumes `MutexKey 0` to acquire a `Mutex 0`
+    --                          ↓ Consumes `LockKey 0` to acquire a `Mutex 0`
     (configGuard, key) <- acquire key configMutex
-    --             ↑ Returns `MutexKey 1`
+    --             ↑ Returns `LockKey 1`
 
 
-    --                      ↓ Consumes `MutexKey 1` to acquire a `Mutex 1`
+    --                      ↓ Consumes `LockKey 1` to acquire a `Mutex 1`
     (dbGuard, key) <- acquire key dbMutex
-    --         ↑ Returns `MutexKey 2`
+    --         ↑ Returns `LockKey 2`
 
     Mutex.release configGuard
     Mutex.release dbGuard
@@ -190,7 +190,7 @@ The next version of `linear-base` [will include][PR] a `MonadIO` instance itself
 Roadmap
 ---
 
-- [ ] Allow backtracking of `MutexKey`'s level when a lock is released
+- [ ] Allow backtracking of `LockKey`'s level when a lock is released
 
 
  [Surelock]: https://notes.brooklynzelenka.com/Blog/Surelock

@@ -47,7 +47,7 @@ example = do
 module LinearLocks
   ( -- * Lock scope
     lockScope,
-    MutexKey,
+    LockKey,
     NestedLocksScopeException (..),
     acquire,
     Acquirable (), -- Note: do not export the typeclass members

@@ -44,11 +44,11 @@ import System.IO.Resource.Linear.Internal qualified as RIOInternal
 --
 -- Acquiring a mutex with `acquire` or `LinearLocks.acquireMany` will consume the key and return a new key with an increased level,
 -- ensuring locks are always acquired in a consistent order.
-data MutexKey (lvl :: Nat)
+data LockKey (lvl :: Nat)
   = -- Notes:
     --  * Do not export the constructor
     --  * Do not implement `Consumable` / `Dupable` / `Movable`
-    UnsafeMutexKey
+    UnsafeLockKey
 
 -- | A unique identifier for a mutex.
 newtype MutexId = MutexId Int
@@ -75,13 +75,13 @@ lockScope ::
   --
   -- The use of `Ur` also prevents any linear values from escaping the scope via the variable `a`.
   -- See: https://www.tweag.io/blog/2023-03-23-linear-constraints-linearly/#sticky-ends-of-scopes
-  (MutexKey 0 %1 -> RIO (Ur a, MutexKey lvl)) ->
+  (LockKey 0 %1 -> RIO (Ur a, LockKey lvl)) ->
   IO a
 lockScope run = do
   ensureNotNested do
     RIO.run L.do
-      let key = UnsafeMutexKey @0
-      (a, UnsafeMutexKey) <- run key
+      let key = UnsafeLockKey @0
+      (a, UnsafeLockKey) <- run key
       L.pure a
   where
     -- Ensures nested lock scopes are not created.
@@ -129,12 +129,12 @@ acquire ::
   forall keyLvl acquirable.
   (Acquirable acquirable) =>
   (keyLvl <= Level acquirable) =>
-  MutexKey keyLvl %1 ->
+  LockKey keyLvl %1 ->
   acquirable ->
-  RIO (Guard acquirable, MutexKey (Level acquirable + 1))
-acquire UnsafeMutexKey m = L.do
+  RIO (Guard acquirable, LockKey (Level acquirable + 1))
+acquire UnsafeLockKey m = L.do
   guard <- unsafeAcquire m
-  L.pure (guard, UnsafeMutexKey)
+  L.pure (guard, UnsafeLockKey)
 
 class (Releasable (Guard acquirable)) => Acquirable acquirable where
   type Guard acquirable :: Type
@@ -142,7 +142,7 @@ class (Releasable (Guard acquirable)) => Acquirable acquirable where
 
   getId :: acquirable -> MutexId
 
-  -- | This is marked as unsafe because it does not consume a `MutexKey`.
+  -- | This is marked as unsafe because it does not consume a `LockKey`.
   unsafeAcquire :: acquirable -> RIO (Guard acquirable)
 
 class Releasable guard where
