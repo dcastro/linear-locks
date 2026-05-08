@@ -33,6 +33,7 @@ library
       LinearLocks.Internal.Mutex
       LinearLocks.Internal.RWLock
       LinearLocks.Internal.StrictMutex
+      LinearLocks.Internal.StrictRWLock
       LinearLocks.Mutex
       LinearLocks.Mutex.Strict
       LinearLocks.RWLock
