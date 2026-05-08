@@ -6,7 +6,8 @@ cabal-version: 2.2
 
 name:           linear-locks
 version:        0.1.0.0
-description:    `linear-locks` provides a `Mutex a` type that is statically guaranteed to not lead to deadlocks.
+synopsis:       Locking primitives free of deadlocks.
+description:    `linear-locks` provides locking primitives that are statically guaranteed to be free of deadlocks.
                 Please see the README on GitHub at <https://github.com/dcastro/linear-locks#readme>
 category:       Concurrency, Parallelism, Mutable State
 homepage:       https://github.com/dcastro/linear-locks#readme

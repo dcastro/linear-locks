@@ -15,15 +15,9 @@ extra-source-files:
   - README.md
   - CHANGELOG.md
 
-# Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
-
-# To avoid duplicated efforts in documentation and dealing with the
-# complications of embedding Haddock markup inside cabal files, it is
-# common to point users to the README.md file.
+synopsis: Locking primitives free of deadlocks.
 description: |
-  `linear-locks` provides a `Mutex a` type that is statically guaranteed to not lead to deadlocks.
+  `linear-locks` provides locking primitives that are statically guaranteed to be free of deadlocks.
   Please see the README on GitHub at <https://github.com/dcastro/linear-locks#readme>
 
 language: GHC2024
@@ -54,6 +48,8 @@ ghc-options:
 library:
   source-dirs: src
   dependencies:
+    # We're using `RequiredTypeArguments` which was introduced in GHC 9.10.1, which comes with base 4.20.0.
+    # https://wiki.haskell.org/Base_package
     - base >= 4.20
     - linear-base >= 0.4.0
     - stm-containers >= 1.2.1
