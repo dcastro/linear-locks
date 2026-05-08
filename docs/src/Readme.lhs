@@ -3,10 +3,17 @@ linear-locks
 
 `linear-locks` is a port of the [Surelock] Rust crate to Linear Haskell.
 
-The package provides a `Mutex a` type (based on `MVar a`) that is statically guaranteed to not lead to deadlocks.
+The package provides locking primitives that are statically guaranteed to not lead to deadlocks.
 
 It achieves this by breaking one of the [Coffman conditions for deadlocks][Coffman]: the "circular wait" condition.
-`linear-locks` ensures mutexes are always acquired in a consistent order.
+`linear-locks` ensures locks are always acquired in a consistent order.
+
+
+Currently supported lock types:
+
+  * "LinearLocks.Mutex"
+  * "LinearLocks.Mutex.Strict"
+  * "LinearLocks.RWLock"
 
 Motivation
 ---
@@ -22,7 +29,7 @@ Still, `STM` does have its limitations:
 Locking primitives like `MVar`s solve both of these issues,
 but juggling multiple `MVar`s is a sure way to sooner or later hit a deadlock.
 
-Enter `linear-locks`: it provides a locking primitive `Mutex a` that is statically guaranteed to be free of deadlocks.
+Enter `linear-locks`: it provides locking primitives that are statically guaranteed to be free of deadlocks.
 
 Getting started
 ---
@@ -65,7 +72,7 @@ example1 :: IO ()
 example1 = do
 \end{code}
 
-Each mutex is assigned a "level" at compile-time.
+Each lock is assigned a "level" at compile-time.
 
 \begin{code}
   -- `Mutex 0 Config`
@@ -77,39 +84,41 @@ Each mutex is assigned a "level" at compile-time.
 
 We can then enter a "lock scope".
 
-We're given a `MutexKey lvl` that we can use to acquire mutexes.
-The key starts off with level 0 (`MutexKey 0`) and it can be used to acquire any mutex with level 0 or above.
+We're given a `LockKey lvl` that we can use to acquire locks.
+The key starts off with level 0 (`LockKey 0`) and it can be used to acquire any lock with level 0 or above.
 
-Every time we acquire a mutex, the key's level increases. Acquiring `Mutex 0 Config` consumes our `MutexKey 0` and gives us a `MutexKey 1` back. Acquiring `Mutex 1 DbConn` then gives us a `MutexKey 2`.
+Every time we acquire a lock, the key's level increases.
+Acquiring `Mutex 0 Config` consumes our `LockKey 0` and gives us a `LockKey 1` back.
+Acquiring `Mutex 1 DbConn` then gives us a `LockKey 2`.
 
 
 \begin{code}
   lockScope \key -> Linear.do
-    --                          ↓ Consumes `MutexKey 0` to lock a `Mutex 0`
-    (configGuard, key) <- lock key configMutex
-    --             ↑ Returns `MutexKey 1`
+    --                             ↓ Consumes `LockKey 0` to acquire a `Mutex 0`
+    (configGuard, key) <- acquire key configMutex
+    --             ↑ Returns `LockKey 1`
 
 
-    --                      ↓ Consumes `MutexKey 1` to lock a `Mutex 1`
-    (dbGuard, key) <- lock key dbMutex
-    --         ↑ Returns `MutexKey 2`
+    --                         ↓ Consumes `LockKey 1` to acquire a `Mutex 1`
+    (dbGuard, key) <- acquire key dbMutex
+    --         ↑ Returns `LockKey 2`
 
     Mutex.release configGuard
     Mutex.release dbGuard
     Linear.pure (Ur (), key)
 \end{code}
 
-Acquiring mutexes in the wrong order (e.g. trying to acquire a mutex of level 0 with a key of level 2) would be a type error.
-This ensures mutexes are always acquired in order of increasing level, preventing circular waits and thus deadlocks.
+Acquiring locks in the wrong order (e.g. trying to acquire a lock of level 0 with a key of level 2) would be a type error.
+This ensures locks are always acquired in order of increasing level, preventing circular waits and thus deadlocks.
 
 The key is linearly typed, it must be consumed _exactly once_.
-Using the same key to acquire 2 mutexes would be a type error.
+Using the same key to acquire 2 locks would be a type error.
 
 Notice how we had to use `Linear.do` (enabled by the `QualifiedDo` extension) and `Linear.pure` instead of `Prelude.pure` to chain our actions together.
 This is because the lock scope action runs in [`RIO`][RIO], and `RIO` does not implement `Prelude.Monad`; instead, it implements [`Linear.Monad`][Linear.Monad] from `linear-base`.
 This ensures values bound by `>>=` must be consumed exactly once.
 
-<h3>MutexGuard</h3>
+<h3>Guards</h3>
 
 When we acquire a mutex, we get back a `MutexGuard a` that represents our ownership of the lock.
 We can freely read from / write to it while the lock is held.
@@ -121,7 +130,7 @@ The guard is also linearly typed, thus ensuring:
 
 \begin{code}
   lockScope \key -> Linear.do
-    (configGuard, key) <- lock key configMutex
+    (configGuard, key) <- acquire key configMutex
 
     (Ur config, configGuard) <- Mutex.read configGuard
 
@@ -137,18 +146,18 @@ Since the guard is linear, `read` and `write` must consume the guard and return 
 `Ur` is short for "unrestricted", meaning the value is _not_ linear
 and can be freely used as many times as needed.
 
-<h3>MutexSet</h3>
+<h3>LockSet</h3>
 
-Mutexes with the same level must be acquired simultaneously by adding them to a `MutexSet` and using `lockMany`.
+Locks with the same level must be acquired simultaneously by adding them to a `LockSet` and using `acquireMany`.
 
 \begin{code}
   alice <- Mutex.new 3 User { balance = 100 }
   bob <- Mutex.new 3 User { balance = 100 }
 
-  users <- newMutexSet (alice, bob)
+  users <- newLockSet (alice, bob)
 
   lockScope \key -> Linear.do
-    ((aliceGuard, bobGuard), key) <- lockMany key users
+    ((aliceGuard, bobGuard), key) <- acquireMany key users
     (Ur alice, aliceGuard) <- Mutex.read aliceGuard
     (Ur bob, bobGuard) <- Mutex.read bobGuard
 
@@ -160,7 +169,7 @@ Mutexes with the same level must be acquired simultaneously by adding them to a 
     Linear.pure (Ur (), key)
 \end{code}
 
-To prevent deadlocks, mutexes in a set are always acquired in a deterministic order.
+To prevent deadlocks, locks in a set are always acquired in a deterministic order.
 Creating a set with `(alice, bob)` or `(bob, alice)` will always result
 in them being acquired in the same order.
 
@@ -170,7 +179,7 @@ You can use the linear [`MonadIO` from `linear-base`][MonadIO] to lift `IO` acti
 
 \begin{code}
   lockScope \key -> Linear.do
-    (configGuard, key) <- lock key configMutex
+    (configGuard, key) <- acquire key configMutex
     (Ur config, configGuard) <- Mutex.read configGuard
 
     Ur newVerbose <- Linear.liftSystemIOU do
@@ -190,7 +199,7 @@ The next version of `linear-base` [will include][PR] a `MonadIO` instance itself
 Roadmap
 ---
 
-- [ ] Allow backtracking of `MutexKey`'s level when a lock is released
+- [ ] Allow backtracking of `LockKey`'s level when a lock is released
 
 
  [Surelock]: https://notes.brooklynzelenka.com/Blog/Surelock

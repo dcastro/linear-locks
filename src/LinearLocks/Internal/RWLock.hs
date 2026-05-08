@@ -42,7 +42,7 @@ example = do
   -- Enter a lockscope
   lockScope \key -> Linear.do
     -- Acquire the lock in "write mode"
-    (guard, key) <- lock key (RWLock.AsWrite configLock)
+    (guard, key) <- acquire key (RWLock.AsWrite configLock)
     --
     -- Read/write
     (Ur config, guard) <- RWLock.read guard
@@ -58,8 +58,8 @@ data RWLock (lvl :: Nat) a = RWLock
   { var :: IORef a,
     -- | A read-write lock gating access to the `IORef`.
     lock :: Conc.RWLock,
-    -- | The unique ID for this lock. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate locks, see 'LinearLocks.newMutexSet'.
-    id :: MutexId
+    -- | The unique ID for this lock. It's used to ensure t'LinearLocks.LockSet's don't contain duplicate locks, see 'LinearLocks.newLockSet'.
+    id :: LockId
   }
 
 -- | Creates a new read-write lock with the given initial value.
@@ -67,12 +67,12 @@ data RWLock (lvl :: Nat) a = RWLock
 -- The @lvl@ parameter determines the order in which this lock can be acquired relative to other locks.
 --
 -- It does not have to be unique, multiple locks can have the same level.
--- Locks with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
+-- Locks with the same level can be added to a t`LinearLocks.LockSet` and acquired with 'LinearLocks.acquireMany'.
 new :: forall a. forall (lvl :: Nat) -> a -> IO (RWLock lvl a)
 new _lvl a = do
   lock <- Conc.new
   var <- IORef.newIORef a
-  id <- nextMutexId
+  id <- nextLockId
   pure RWLock {var, lock, id}
 
 class Readable guard where
@@ -98,14 +98,14 @@ newtype Resource = Resource
 
 newtype AsRead lvl a = AsRead (RWLock lvl a)
 
-instance Lockable (AsRead lvl a) where
+instance Acquirable (AsRead lvl a) where
   type Guard (AsRead lvl a) = ReadGuard a
   type Level (AsRead lvl a) = lvl
 
   getId (AsRead m) = m.id
 
-  unsafeLock :: forall lvl a. AsRead lvl a -> RIO (ReadGuard a)
-  unsafeLock (AsRead m) = L.do
+  unsafeAcquire :: forall lvl a. AsRead lvl a -> RIO (ReadGuard a)
+  unsafeAcquire (AsRead m) = L.do
     -- Acquire the rwlock in "read mode" and *then* read the `IORef`.
     resource <- RIO.unsafeAcquire acq rel
     Ur readValue <- L.liftSystemIOU (IORef.readIORef m.var)
@@ -156,14 +156,14 @@ data WriteGuard a = WriteGuard
 
 newtype AsWrite lvl a = AsWrite (RWLock lvl a)
 
-instance Lockable (AsWrite lvl a) where
+instance Acquirable (AsWrite lvl a) where
   type Guard (AsWrite lvl a) = WriteGuard a
   type Level (AsWrite lvl a) = lvl
 
   getId (AsWrite m) = m.id
 
-  unsafeLock :: forall lvl a. AsWrite lvl a -> RIO (WriteGuard a)
-  unsafeLock (AsWrite m) = L.do
+  unsafeAcquire :: forall lvl a. AsWrite lvl a -> RIO (WriteGuard a)
+  unsafeAcquire (AsWrite m) = L.do
     -- Acquire the rwlock in "write mode" and *then* read the `IORef`.
     resource <- RIO.unsafeAcquire acq rel
     Ur initialValue <- L.liftSystemIOU (IORef.readIORef m.var)

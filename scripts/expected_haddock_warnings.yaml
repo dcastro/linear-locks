@@ -1,9 +1,9 @@
 expected_warnings:
   - |
     Warning: LinearLocks.Internal: could not find link destinations for:
-            - LinearLocks.Internal.MV_MutexId
-            - LinearLocks.Internal.V_MutexId
+            - LinearLocks.Internal.V_LockId
+            - LinearLocks.Internal.MV_LockId
   - |
-    Warning: LinearLocks.Internal.MutexSet: could not find link destinations for:
-            - LinearLocks.Internal.MutexSet.MV_MutexSetIndex
-            - LinearLocks.Internal.MutexSet.V_MutexSetIndex
+    Warning: LinearLocks.Internal.LockSet: could not find link destinations for:
+            - LinearLocks.Internal.LockSet.V_LockSetIndex
+            - LinearLocks.Internal.LockSet.MV_LockSetIndex

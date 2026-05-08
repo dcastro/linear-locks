@@ -42,30 +42,30 @@ import System.IO.Resource.Linear.Internal qualified as RIOInternal
 -- | A key used to acquire locks.
 -- A key of level @n@ can only acquire locks of level @n@ or higher.
 --
--- Acquiring a mutex with `lock` or `LinearLocks.lockMany` will consume the key and return a new key with an increased level,
+-- Acquiring a mutex with `acquire` or `LinearLocks.acquireMany` will consume the key and return a new key with an increased level,
 -- ensuring locks are always acquired in a consistent order.
-data MutexKey (lvl :: Nat)
+data LockKey (lvl :: Nat)
   = -- Notes:
     --  * Do not export the constructor
     --  * Do not implement `Consumable` / `Dupable` / `Movable`
-    UnsafeMutexKey
+    UnsafeLockKey
 
 -- | A unique identifier for a mutex.
-newtype MutexId = MutexId Int
+newtype LockId = LockId Int
   deriving newtype (Eq, Ord, Show)
 
-newtype instance VU.MVector s MutexId = MV_MutexId (VP.MVector s Int)
+newtype instance VU.MVector s LockId = MV_LockId (VP.MVector s Int)
 
-newtype instance VU.Vector MutexId = V_MutexId (VP.Vector Int)
+newtype instance VU.Vector LockId = V_LockId (VP.Vector Int)
 
-deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector MutexId
+deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector LockId
 
-deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexId
+deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector LockId
 
-instance VU.Unbox MutexId
+instance VU.Unbox LockId
 
 -- | Creates a new lock scope with a key of level 0, and runs the given function with it.
---  The key can be used to lock mutexes with `lock` and `LinearLocks.lockMany`.
+--  The key can be used to acquire locks with `acquire` and `LinearLocks.acquireMany`.
 -- The final key must be returned.
 --
 -- Will throw a t`NestedLocksScopeException` if a nested `lockScope` is created at runtime.
@@ -75,13 +75,13 @@ lockScope ::
   --
   -- The use of `Ur` also prevents any linear values from escaping the scope via the variable `a`.
   -- See: https://www.tweag.io/blog/2023-03-23-linear-constraints-linearly/#sticky-ends-of-scopes
-  (MutexKey 0 %1 -> RIO (Ur a, MutexKey lvl)) ->
+  (LockKey 0 %1 -> RIO (Ur a, LockKey lvl)) ->
   IO a
 lockScope run = do
   ensureNotNested do
     RIO.run L.do
-      let key = UnsafeMutexKey @0
-      (a, UnsafeMutexKey) <- run key
+      let key = UnsafeLockKey @0
+      (a, UnsafeLockKey) <- run key
       L.pure a
   where
     -- Ensures nested lock scopes are not created.
@@ -125,25 +125,25 @@ instance Exception NestedLocksScopeException where
 
 -- | Acquire a mutex.
 -- Consumes the key and return a new key (with an increased level).
-lock ::
-  forall keyLvl lockable.
-  (Lockable lockable) =>
-  (keyLvl <= Level lockable) =>
-  MutexKey keyLvl %1 ->
-  lockable ->
-  RIO (Guard lockable, MutexKey (Level lockable + 1))
-lock UnsafeMutexKey m = L.do
-  guard <- unsafeLock m
-  L.pure (guard, UnsafeMutexKey)
+acquire ::
+  forall keyLvl acquirable.
+  (Acquirable acquirable) =>
+  (keyLvl <= Level acquirable) =>
+  LockKey keyLvl %1 ->
+  acquirable ->
+  RIO (Guard acquirable, LockKey (Level acquirable + 1))
+acquire UnsafeLockKey m = L.do
+  guard <- unsafeAcquire m
+  L.pure (guard, UnsafeLockKey)
 
-class (Releasable (Guard lockable)) => Lockable lockable where
-  type Guard lockable :: Type
-  type Level lockable :: Nat
+class (Releasable (Guard acquirable)) => Acquirable acquirable where
+  type Guard acquirable :: Type
+  type Level acquirable :: Nat
 
-  getId :: lockable -> MutexId
+  getId :: acquirable -> LockId
 
-  -- | This is marked as unsafe because it does not consume a `MutexKey`.
-  unsafeLock :: lockable -> RIO (Guard lockable)
+  -- | This is marked as unsafe because it does not consume a `LockKey`.
+  unsafeAcquire :: acquirable -> RIO (Guard acquirable)
 
 class Releasable guard where
   -- Design decision: `doRelease` generalizes over releasing any kind of mutex, but we don't export it.
@@ -164,17 +164,17 @@ lockScopes =
   -- See: https://wiki.haskell.org/index.php?oldid=64612
   unsafePerformIO StmSet.newIO
 
--- | An atomic counter used to generate unique IDs for mutexes.
-{-# NOINLINE mutexIdCounter #-}
-mutexIdCounter :: AtomicCounter
-mutexIdCounter =
+-- | An atomic counter used to generate unique IDs for locks.
+{-# NOINLINE lockIdCounter #-}
+lockIdCounter :: AtomicCounter
+lockIdCounter =
   unsafePerformIO $ Atomic.newCounter 0
 
 -- | Generates the next unique mutex ID.
-nextMutexId :: IO MutexId
-nextMutexId = do
-  newId <- Atomic.incrCounter 1 mutexIdCounter
-  pure (MutexId newId)
+nextLockId :: IO LockId
+nextLockId = do
+  newId <- Atomic.incrCounter 1 lockIdCounter
+  pure (LockId newId)
 
 -- Only provide this orphan instance for linear-base <= 0.7.0
 -- The next release will come with this instance built-in: https://github.com/tweag/linear-base/pull/505

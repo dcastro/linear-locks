@@ -7,7 +7,7 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
-module LinearLocks.Internal.MutexSet where
+module LinearLocks.Internal.LockSet where
 
 import Control.Functor.Linear qualified as L
 import Control.Monad.IO.Class.Linear qualified as L
@@ -24,49 +24,49 @@ import GHC.TypeLits (Nat, type (+), type (<=))
 import LinearLocks.Internal
 import System.IO.Resource.Linear (RIO)
 
--- | The index of a mutex in a mutex set.
-newtype MutexSetIndex = MutexSetIndex Int
+-- | The index of a lock in a lock set.
+newtype LockSetIndex = LockSetIndex Int
   deriving newtype (Enum)
 
-newtype instance VU.MVector s MutexSetIndex = MV_MutexSetIndex (VP.MVector s Int)
+newtype instance VU.MVector s LockSetIndex = MV_LockSetIndex (VP.MVector s Int)
 
-newtype instance VU.Vector MutexSetIndex = V_MutexSetIndex (VP.Vector Int)
+newtype instance VU.Vector LockSetIndex = V_LockSetIndex (VP.Vector Int)
 
-deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector MutexSetIndex
+deriving via (VU.UnboxViaPrim Int) instance VGM.MVector VU.MVector LockSetIndex
 
-deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexSetIndex
+deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector LockSetIndex
 
-instance VU.Unbox MutexSetIndex
+instance VU.Unbox LockSetIndex
 
--- | A set of mutexes with the same level that can be locked together with 'lockMany'.
-data MutexSet set where
-  MkMutexSet :: set -> VU.Vector MutexSetIndex -> MutexSet set
+-- | A set of locks with the same level that can be acquired together with 'acquireMany'.
+data LockSet set where
+  MkLockSet :: set -> VU.Vector LockSetIndex -> LockSet set
 
--- | Creates a 'MutexSet' from a set of mutexes.
--- All mutexes must have the same level.
+-- | Creates a 'LockSet' from a set of locks.
+-- All locks must have the same level.
 --
--- Mutexes in a 'MutexSet' can be locked simultaneously using 'lockMany'.
+-- Locks in a 'LockSet' can be acquired simultaneously using 'acquireMany'.
 --
--- Fails if the set contains duplicate mutexes.
+-- Fails if the set contains duplicate locks.
 --
 -- >>> import LinearLocks.Mutex qualified as Mutex
 -- >>> m1 <- Mutex.new 1 "a"
 -- >>> m2 <- Mutex.new 1 "b"
 -- >>> m3 <- Mutex.new 1 "c"
--- >>> set <- newMutexSet (m1, m2, m3)
-newMutexSet :: forall m set. (IsMutexSet set, MonadFail m) => set -> m (MutexSet set)
-newMutexSet set =
+-- >>> set <- newLockSet (m1, m2, m3)
+newLockSet :: forall m set. (IsLockSet set, MonadFail m) => set -> m (LockSet set)
+newLockSet set =
   if hasDups
-    then fail "MutexSet: duplicate mutexes are not allowed"
-    else pure $ MkMutexSet set sortedIndices
+    then fail "LockSet: duplicate locks are not allowed"
+    else pure $ MkLockSet set sortedIndices
   where
     (hasDups, sortedIndices) = runST do
-      idsAndIndices <- VU.thaw $ VU.fromList $ collectIds set `zip` [MutexSetIndex 0 ..]
+      idsAndIndices <- VU.thaw $ VU.fromList $ collectIds set `zip` [LockSetIndex 0 ..]
 
-      -- Sort by mutex IDs
+      -- Sort by lock IDs
       Sort.sortBy (compare `on` fst) idsAndIndices
 
-      -- Check whether this set contains duplicate mutexes.
+      -- Check whether this set contains duplicate locks.
       -- NOTE: the vector must already be sorted.
       hasDups <- hasDuplicateIds idsAndIndices
 
@@ -74,7 +74,7 @@ newMutexSet set =
 
       pure (hasDups, sortedIndices)
 
-    hasDuplicateIds :: VUM.MVector (VUM.PrimState (ST s)) (MutexId, MutexSetIndex) -> ST s Bool
+    hasDuplicateIds :: VUM.MVector (VUM.PrimState (ST s)) (LockId, LockSetIndex) -> ST s Bool
     hasDuplicateIds idsAndIndices = do
       let go i =
             if i >= VUM.length idsAndIndices - 1
@@ -87,58 +87,58 @@ newMutexSet set =
                   else go (i + 1)
       go 0
 
-lockMany ::
-  forall keyLvl mutexLvl set.
-  (IsMutexSet set, mutexLvl ~ MutexSetLevel set, keyLvl <= mutexLvl) =>
-  MutexKey keyLvl %1 ->
-  MutexSet set ->
-  RIO (MutexGuardSet set, MutexKey (mutexLvl + 1))
-lockMany UnsafeMutexKey (MkMutexSet set indices) = L.do
-  guards <- lockInOrder indices set
-  L.pure (guards, UnsafeMutexKey)
+acquireMany ::
+  forall keyLvl lockLvl set.
+  (IsLockSet set, lockLvl ~ LockSetLevel set, keyLvl <= lockLvl) =>
+  LockKey keyLvl %1 ->
+  LockSet set ->
+  RIO (LockSetGuard set, LockKey (lockLvl + 1))
+acquireMany UnsafeLockKey (MkLockSet set indices) = L.do
+  guards <- acquireInOrder indices set
+  L.pure (guards, UnsafeLockKey)
 
-class IsMutexSet set where
-  type MutexGuardSet set :: Type
-  type MutexSetLevel set :: Nat
+class IsLockSet set where
+  type LockSetGuard set :: Type
+  type LockSetLevel set :: Nat
 
-  collectIds :: set -> [MutexId]
+  collectIds :: set -> [LockId]
 
-  -- | Locks the mutexes in the set in the given order.
-  -- E.g. `lockInOrder [1, 3, 2]` will lock the first mutex in the set, then the third, then the second.
+  -- | Acquires the locks in the set in the given order.
+  -- E.g. `acquireInOrder [1, 3, 2]` will acquire the first lock in the set, then the third, then the second.
   --
   -- Invariants:
-  --   * The indices must refer to every mutex in the set, without duplicates.
-  lockInOrder :: VU.Vector MutexSetIndex -> set -> RIO (MutexGuardSet set)
+  --   * The indices must refer to every lock in the set, without duplicates.
+  acquireInOrder :: VU.Vector LockSetIndex -> set -> RIO (LockSetGuard set)
 
 instance
-  ( Lockable l1,
-    Lockable l2,
+  ( Acquirable l1,
+    Acquirable l2,
     Level l1 ~ Level l2
   ) =>
-  IsMutexSet (l1, l2)
+  IsLockSet (l1, l2)
   where
-  type MutexGuardSet (l1, l2) = (Guard l1, Guard l2)
-  type MutexSetLevel (l1, l2) = Level l1
+  type LockSetGuard (l1, l2) = (Guard l1, Guard l2)
+  type LockSetLevel (l1, l2) = Level l1
 
   collectIds (l1, l2) = [getId l1, getId l2]
 
-  lockInOrder indices (l1, l2) = L.do
-    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing)
+  acquireInOrder indices (l1, l2) = L.do
+    guards <- L.execStateT (forM_' indices acquireAt) (Nothing, Nothing)
     case guards of
       (Just g1, Just g2) -> L.pure (g1, g2)
       guards -> releaseAndFail guards missingIndices
     where
-      lockAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2)) RIO ()
-      lockAt (MutexSetIndex index) =
+      acquireAt :: LockSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2)) RIO ()
+      acquireAt (LockSetIndex index) =
         case index of
           0 -> modifyM \case
             (Nothing, g2) -> L.do
-              g1 <- unsafeLock l1
+              g1 <- unsafeAcquire l1
               L.pure (Just g1, g2)
             guards -> releaseAndFail guards (dupIndex index)
           1 -> modifyM \case
             (g1, Nothing) -> L.do
-              g2 <- unsafeLock l2
+              g2 <- unsafeAcquire l2
               L.pure (g1, Just g2)
             guards -> releaseAndFail guards (dupIndex index)
           _ -> L.lift (failRIO (invalidIndex index))
@@ -150,43 +150,43 @@ instance
         failRIO errMsg
 
 instance
-  ( Lockable l1,
-    Lockable l2,
-    Lockable l3,
+  ( Acquirable l1,
+    Acquirable l2,
+    Acquirable l3,
     Level l1 ~ Level l2,
     Level l1 ~ Level l3
   ) =>
-  IsMutexSet (l1, l2, l3)
+  IsLockSet (l1, l2, l3)
   where
-  type MutexGuardSet (l1, l2, l3) = (Guard l1, Guard l2, Guard l3)
-  type MutexSetLevel (l1, l2, l3) = Level l1
+  type LockSetGuard (l1, l2, l3) = (Guard l1, Guard l2, Guard l3)
+  type LockSetLevel (l1, l2, l3) = Level l1
 
   collectIds (l1, l2, l3) = [getId l1, getId l2, getId l3]
 
-  lockInOrder indices (l1, l2, l3) = L.do
-    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing)
+  acquireInOrder indices (l1, l2, l3) = L.do
+    guards <- L.execStateT (forM_' indices acquireAt) (Nothing, Nothing, Nothing)
     case guards of
       (Just g1, Just g2, Just g3) -> L.pure (g1, g2, g3)
       guards -> releaseAndFail guards missingIndices
     where
-      lockAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3)) RIO ()
-      lockAt (MutexSetIndex index) =
+      acquireAt :: LockSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3)) RIO ()
+      acquireAt (LockSetIndex index) =
         case index of
           0 -> modifyM \case
             (Nothing, g2, g3) -> L.do
-              g1 <- unsafeLock l1
+              g1 <- unsafeAcquire l1
               L.pure (Just g1, g2, g3)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           1 -> modifyM \case
             (g1, Nothing, g3) -> L.do
-              g2 <- unsafeLock l2
+              g2 <- unsafeAcquire l2
               L.pure (g1, Just g2, g3)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           2 -> modifyM \case
             (g1, g2, Nothing) -> L.do
-              g3 <- unsafeLock l3
+              g3 <- unsafeAcquire l3
               L.pure (g1, g2, Just g3)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
@@ -200,51 +200,51 @@ instance
         failRIO errMsg
 
 instance
-  ( Lockable l1,
-    Lockable l2,
-    Lockable l3,
-    Lockable l4,
+  ( Acquirable l1,
+    Acquirable l2,
+    Acquirable l3,
+    Acquirable l4,
     Level l1 ~ Level l2,
     Level l1 ~ Level l3,
     Level l1 ~ Level l4
   ) =>
-  IsMutexSet (l1, l2, l3, l4)
+  IsLockSet (l1, l2, l3, l4)
   where
-  type MutexGuardSet (l1, l2, l3, l4) = (Guard l1, Guard l2, Guard l3, Guard l4)
-  type MutexSetLevel (l1, l2, l3, l4) = Level l1
+  type LockSetGuard (l1, l2, l3, l4) = (Guard l1, Guard l2, Guard l3, Guard l4)
+  type LockSetLevel (l1, l2, l3, l4) = Level l1
 
   collectIds (l1, l2, l3, l4) = [getId l1, getId l2, getId l3, getId l4]
 
-  lockInOrder indices (l1, l2, l3, l4) = L.do
-    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing, Nothing)
+  acquireInOrder indices (l1, l2, l3, l4) = L.do
+    guards <- L.execStateT (forM_' indices acquireAt) (Nothing, Nothing, Nothing, Nothing)
     case guards of
       (Just g1, Just g2, Just g3, Just g4) -> L.pure (g1, g2, g3, g4)
       guards -> releaseAndFail guards missingIndices
     where
-      lockAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3), Maybe (Guard l4)) RIO ()
-      lockAt (MutexSetIndex index) =
+      acquireAt :: LockSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3), Maybe (Guard l4)) RIO ()
+      acquireAt (LockSetIndex index) =
         case index of
           0 -> modifyM \case
             (Nothing, g2, g3, g4) -> L.do
-              g1 <- unsafeLock l1
+              g1 <- unsafeAcquire l1
               L.pure (Just g1, g2, g3, g4)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           1 -> modifyM \case
             (g1, Nothing, g3, g4) -> L.do
-              g2 <- unsafeLock l2
+              g2 <- unsafeAcquire l2
               L.pure (g1, Just g2, g3, g4)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           2 -> modifyM \case
             (g1, g2, Nothing, g4) -> L.do
-              g3 <- unsafeLock l3
+              g3 <- unsafeAcquire l3
               L.pure (g1, g2, Just g3, g4)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           3 -> modifyM \case
             (g1, g2, g3, Nothing) -> L.do
-              g4 <- unsafeLock l4
+              g4 <- unsafeAcquire l4
               L.pure (g1, g2, g3, Just g4)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
@@ -259,59 +259,59 @@ instance
         failRIO errMsg
 
 instance
-  ( Lockable l1,
-    Lockable l2,
-    Lockable l3,
-    Lockable l4,
-    Lockable l5,
+  ( Acquirable l1,
+    Acquirable l2,
+    Acquirable l3,
+    Acquirable l4,
+    Acquirable l5,
     Level l1 ~ Level l2,
     Level l1 ~ Level l3,
     Level l1 ~ Level l4,
     Level l1 ~ Level l5
   ) =>
-  IsMutexSet (l1, l2, l3, l4, l5)
+  IsLockSet (l1, l2, l3, l4, l5)
   where
-  type MutexGuardSet (l1, l2, l3, l4, l5) = (Guard l1, Guard l2, Guard l3, Guard l4, Guard l5)
-  type MutexSetLevel (l1, l2, l3, l4, l5) = Level l1
+  type LockSetGuard (l1, l2, l3, l4, l5) = (Guard l1, Guard l2, Guard l3, Guard l4, Guard l5)
+  type LockSetLevel (l1, l2, l3, l4, l5) = Level l1
 
   collectIds (l1, l2, l3, l4, l5) = [getId l1, getId l2, getId l3, getId l4, getId l5]
 
-  lockInOrder indices (l1, l2, l3, l4, l5) = L.do
-    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing, Nothing, Nothing)
+  acquireInOrder indices (l1, l2, l3, l4, l5) = L.do
+    guards <- L.execStateT (forM_' indices acquireAt) (Nothing, Nothing, Nothing, Nothing, Nothing)
     case guards of
       (Just g1, Just g2, Just g3, Just g4, Just g5) -> L.pure (g1, g2, g3, g4, g5)
       guards -> releaseAndFail guards missingIndices
     where
-      lockAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3), Maybe (Guard l4), Maybe (Guard l5)) RIO ()
-      lockAt (MutexSetIndex index) =
+      acquireAt :: LockSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3), Maybe (Guard l4), Maybe (Guard l5)) RIO ()
+      acquireAt (LockSetIndex index) =
         case index of
           0 -> modifyM \case
             (Nothing, g2, g3, g4, g5) -> L.do
-              g1 <- unsafeLock l1
+              g1 <- unsafeAcquire l1
               L.pure (Just g1, g2, g3, g4, g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           1 -> modifyM \case
             (g1, Nothing, g3, g4, g5) -> L.do
-              g2 <- unsafeLock l2
+              g2 <- unsafeAcquire l2
               L.pure (g1, Just g2, g3, g4, g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           2 -> modifyM \case
             (g1, g2, Nothing, g4, g5) -> L.do
-              g3 <- unsafeLock l3
+              g3 <- unsafeAcquire l3
               L.pure (g1, g2, Just g3, g4, g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           3 -> modifyM \case
             (g1, g2, g3, Nothing, g5) -> L.do
-              g4 <- unsafeLock l4
+              g4 <- unsafeAcquire l4
               L.pure (g1, g2, g3, Just g4, g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           4 -> modifyM \case
             (g1, g2, g3, g4, Nothing) -> L.do
-              g5 <- unsafeLock l5
+              g5 <- unsafeAcquire l5
               L.pure (g1, g2, g3, g4, Just g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
@@ -331,13 +331,13 @@ instance
 ----------------------------------------------------------------------------
 
 missingIndices :: String
-missingIndices = "MutexSet: missing indices"
+missingIndices = "LockSet: missing indices"
 
 dupIndex :: Int -> String
-dupIndex index = "MutexSet: duplicate index: " <> show index
+dupIndex index = "LockSet: duplicate index: " <> show index
 
 invalidIndex :: Int -> String
-invalidIndex index = "MutexSet: invalid index: " <> show index
+invalidIndex index = "LockSet: invalid index: " <> show index
 
 releaseMb :: (Releasable g) => Maybe g %1 -> RIO ()
 releaseMb = \case

@@ -29,11 +29,11 @@ import System.IO.Resource.Linear.Internal qualified as Internal
 -- To avoid this, use "LinearLocks.Mutex.Strict" instead.
 data Mutex (lvl :: Nat) a = Mutex
   { var :: MVar a,
-    -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.newMutexSet'.
-    id :: MutexId
+    -- | The unique ID for this mutex. It's used to ensure t'LinearLocks.LockSet's don't contain duplicate mutexes, see 'LinearLocks.newLockSet'.
+    id :: LockId
   }
 
--- | A t`MutexGuard` represents the ownership of a locked mutex.
+-- | A t`MutexGuard` represents the ownership of a mutex.
 --
 -- It can be used to read/write the mutex while the lock is held.
 --
@@ -53,14 +53,14 @@ data MutexResource a = MutexResource
     var :: MVar a
   }
 
-instance Lockable (Mutex lvl a) where
+instance Acquirable (Mutex lvl a) where
   type Guard (Mutex lvl a) = MutexGuard a
   type Level (Mutex lvl a) = lvl
 
   getId m = m.id
 
-  unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
-  unsafeLock m = L.do
+  unsafeAcquire :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
+  unsafeAcquire m = L.do
     -- Note: we have to match on `UnsafeResource` so we can extract the `guard.initialValue`
     Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
     L.pure
@@ -112,9 +112,9 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
 -- The @lvl@ parameter determines the order in which this mutex can be acquired relative to other mutexes.
 --
 -- It does not have to be unique, multiple mutexes can have the same level.
--- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
+-- Mutexes with the same level can be added to a t`LinearLocks.LockSet` and acquired with 'LinearLocks.acquireMany'.
 new :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
 new _lvl a = do
   var <- MVar.newMVar a
-  id <- nextMutexId
+  id <- nextLockId
   pure Mutex {var, id}

@@ -24,9 +24,9 @@ example = do
   --
   -- Enter a lockscope
   lockScope \key -> Linear.do
-    -- Acquire mutexes
-    (configGuard, key) <- lock key configMutex
-    (dbGuard, key) <- lock key dbMutex
+    -- Acquire locks
+    (configGuard, key) <- acquire key configMutex
+    (dbGuard, key) <- acquire key dbMutex
     --
     -- Read/write
     (Ur config, configGuard) <- Mutex.read configGuard
@@ -36,7 +36,7 @@ example = do
     Linear.liftSystemIO do
       putStrLn $ "Verbose mode was: " <> show (verbose config)
     --
-    -- Release mutexes
+    -- Release locks
     Mutex.release configGuard
     Mutex.release dbGuard
     Linear.pure (Ur (), key)
@@ -47,21 +47,21 @@ example = do
 module LinearLocks
   ( -- * Lock scope
     lockScope,
-    MutexKey,
+    LockKey,
     NestedLocksScopeException (..),
-    lock,
-    Lockable (), -- Note: do not export the typeclass members
+    acquire,
+    Acquirable (), -- Note: do not export the typeclass members
 
-    -- * Mutex sets
-    MutexSet,
-    IsMutexSet (), -- Note: do not export the typeclass members
-    newMutexSet,
-    lockMany,
+    -- * Lock sets
+    LockSet,
+    IsLockSet (), -- Note: do not export the typeclass members
+    newLockSet,
+    acquireMany,
   )
 where
 
 import LinearLocks.Internal
-import LinearLocks.Internal.MutexSet
+import LinearLocks.Internal.LockSet
 
 -- $setup
 -- >>> data Config = Config { verbose :: Bool }

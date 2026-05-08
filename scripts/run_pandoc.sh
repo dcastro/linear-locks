@@ -11,6 +11,15 @@ cd "$(dirname "$0")"
 declare -A file_map
 file_map["../docs/src/Readme.lhs"]="../README.md"
 
+# NOTE:
+# We use the extension `+lhs` to enable support for Literate Haskell
+#     https://pandoc.org/demo/example33/7.5-literate-haskell-support.html
+# We use `-smart` to disable smart punctuation (curly quotes, en-dashes, etc.)
+#     https://pandoc.org/demo/example33/7.1-typography.html
+#
+#
+# List of supported extensions:
+#     pandoc --list-extensions=markdown
 for from in "${!file_map[@]}"; do
     to="${file_map[$from]}"
     echo "Converting $from -> $to"
@@ -18,7 +27,7 @@ for from in "${!file_map[@]}"; do
         --standalone \
         "$from" \
         -o "$to" \
-        --from markdown+lhs --to gfm
+        --from markdown+lhs-smart --to gfm
 
 
     # Add a header to the generated file markdown file.

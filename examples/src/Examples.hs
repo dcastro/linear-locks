@@ -20,7 +20,7 @@ example1 :: IO ()
 example1 = do
   mutex <- Mutex.new 0 "hello"
   lockScope \key -> Linear.do
-    (mg, key) <- lock key mutex
+    (mg, key) <- acquire key mutex
     (Ur str, mg) <- Mutex.read mg
     Linear.liftSystemIO (putStrLn str)
     mg <- Mutex.write mg "world"
@@ -33,8 +33,8 @@ example1 = do
 --   m1 <- Mutex.new 0 "hello"
 --   m2 <- Mutex.new 1 "world"
 --   lockScope \key -> Linear.do
---     (mg2, key) <- lock key m2
---     (mg1, key) <- lock key m1
+--     (mg2, key) <- acquire key m2
+--     (mg1, key) <- acquire key m1
 --     Mutex.release mg1
 --     Mutex.release mg2
 --     Linear.pure (Ur (), key)
@@ -48,8 +48,8 @@ example3 = do
   m1 <- Mutex.new 0 "hello"
   m2 <- Mutex.new 1 "world"
   lockScope \key -> Linear.do
-    (mg1, key) <- lock key m1
-    (mg2, key) <- lock key m2
+    (mg1, key) <- acquire key m1
+    (mg2, key) <- acquire key m2
     (Ur str1, mg1) <- Mutex.read mg1
     (Ur str2, mg2) <- Mutex.read mg2
 
@@ -70,11 +70,11 @@ example4 = do
   m1 <- Mutex.new 0 "hello"
   m2 <- Mutex.new 1 "world"
   lockScope \key -> Linear.do
-    (mg2, key) <- lock key m2
+    (mg2, key) <- acquire key m2
 
     -- Attempt to use nested lockScopes to acquire locks out of order.
     Linear.liftSystemIO Linear.$ lockScope \key -> Linear.do
-      (mg1, key) <- lock key m1
+      (mg1, key) <- acquire key m1
       Mutex.release mg1
       Linear.pure (Ur (), key)
 
@@ -82,7 +82,7 @@ example4 = do
 
     Linear.pure (Ur (), key)
 
--- | Lock many locks with the same lvl using a `MutexSet`
+-- | Acquire many locks with the same lvl using a `LockSet`
 --
 -- >>> example5
 -- hello world
@@ -92,9 +92,9 @@ example5 :: IO ()
 example5 = do
   m1 <- Mutex.new 0 3
   m2 <- Mutex.new 0 "hello world"
-  mutexSet <- newMutexSet (m1, m2)
+  mutexSet <- newLockSet (m1, m2)
   lockScope \key -> Linear.do
-    ((mg1, mg2), key) <- lockMany key mutexSet
+    ((mg1, mg2), key) <- acquireMany key mutexSet
     (Ur count, mg1) <- Mutex.read mg1
     (Ur str, mg2) <- Mutex.read mg2
 
