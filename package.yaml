@@ -59,6 +59,7 @@ library:
     - vector-algorithms
     - containers
     - deepseq
+    - concurrent-extra
 
 tests:
   linear-locks-test:
@@ -74,5 +75,6 @@ tests:
       - stm-containers
       - list-t
       - vector
+      - concurrent-extra
     build-tools:
       - tasty-discover:tasty-discover

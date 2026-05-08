@@ -22,6 +22,7 @@ import Control.Functor.Linear qualified as L
 import Control.Monad.IO.Class.Linear qualified as L
 import Data.Atomics.Counter (AtomicCounter)
 import Data.Atomics.Counter qualified as Atomic
+import Data.IntMap.Strict qualified as IntMap
 import Data.Vector.Generic qualified as VG
 import Data.Vector.Generic.Mutable qualified as VGM
 import Data.Vector.Primitive qualified as VP
@@ -33,11 +34,10 @@ import GHC.IO (unsafePerformIO)
 import GHC.TypeLits (Nat, type (+), type (<=))
 import Prelude.Linear (Ur (..))
 import StmContainers.Set qualified as StmSet
+import System.IO.Linear qualified as L
 import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear qualified as RIO
-#if !MIN_VERSION_linear_base(0,7,1)
 import System.IO.Resource.Linear.Internal qualified as RIOInternal
-#endif
 
 -- | A key used to acquire locks.
 -- A key of level @n@ can only acquire locks of level @n@ or higher.
@@ -170,9 +170,28 @@ mutexIdCounter :: AtomicCounter
 mutexIdCounter =
   unsafePerformIO $ Atomic.newCounter 0
 
+-- | Generates the next unique mutex ID.
+nextMutexId :: IO MutexId
+nextMutexId = do
+  newId <- Atomic.incrCounter 1 mutexIdCounter
+  pure (MutexId newId)
+
 -- Only provide this orphan instance for linear-base <= 0.7.0
 -- The next release will come with this instance built-in: https://github.com/tweag/linear-base/pull/505
 #if !MIN_VERSION_linear_base(0,7,1)
 instance L.MonadIO RIO where
   liftIO action = RIOInternal.RIO (\_ -> action)
 #endif
+
+----------------------------------------------------------------------------
+-- Utils
+----------------------------------------------------------------------------
+
+-- | Similar to 'System.IO.Resource.Linear.release', except it uses a different release action than the one registered by 'System.IO.Resource.Linear.unsafeAcquire'.
+release' :: RIO.Resource a %1 -> L.IO () -> RIO ()
+release' (RIOInternal.UnsafeResource key _) release = RIOInternal.RIO (\st -> L.mask_ (releaseWith key st))
+  where
+    releaseWith key rrm = L.do
+      Ur (RIOInternal.ReleaseMap releaseMap) <- L.readIORef rrm
+      () <- release
+      L.writeIORef rrm (RIOInternal.ReleaseMap (IntMap.delete key releaseMap))

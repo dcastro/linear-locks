@@ -31,9 +31,11 @@ library
       LinearLocks.Internal
       LinearLocks.Internal.Mutex
       LinearLocks.Internal.MutexSet
+      LinearLocks.Internal.RWLock
       LinearLocks.Internal.StrictMutex
       LinearLocks.Mutex
       LinearLocks.Mutex.Strict
+      LinearLocks.RWLock
   other-modules:
       Paths_linear_locks
   autogen-modules:
@@ -48,6 +50,7 @@ library
   build-depends:
       atomic-primops
     , base
+    , concurrent-extra
     , containers
     , deepseq
     , focus
@@ -63,6 +66,7 @@ test-suite linear-locks-test
   other-modules:
       Test.LinearLocks.MutexSetSpec
       Test.LinearLocks.MutexSpec
+      Test.LinearLocks.RWLockSpec
       Test.LinearLocks.StrictMutexSpec
       Paths_linear_locks
   autogen-modules:
@@ -78,6 +82,7 @@ test-suite linear-locks-test
       tasty-discover:tasty-discover
   build-depends:
       base
+    , concurrent-extra
     , hspec-expectations-pretty-diff
     , linear-base
     , linear-locks

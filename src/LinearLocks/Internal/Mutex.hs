@@ -1,4 +1,3 @@
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LinearTypes #-}
 {-# LANGUAGE OverloadedRecordDot #-}
@@ -6,7 +5,6 @@
 {-# LANGUAGE RequiredTypeArguments #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 module LinearLocks.Internal.Mutex where
@@ -14,8 +12,6 @@ module LinearLocks.Internal.Mutex where
 import Control.Concurrent (MVar)
 import Control.Concurrent qualified as MVar
 import Control.Functor.Linear qualified as L
-import Data.Atomics.Counter qualified as Atomic
-import Data.IntMap.Strict qualified as IntMap
 import GHC.TypeLits (Nat)
 import LinearLocks.Internal
 import Prelude.Linear (Ur (..))
@@ -98,7 +94,7 @@ write :: MutexGuard a %1 -> a -> RIO (MutexGuard a)
 write (MutexGuard resource (Ur _)) newValue =
   L.pure (MutexGuard {resource, newValue = Ur newValue})
 
--- | Releases a mutex and commits the latest value set by `write`.
+-- | Releases the mutex and commits the latest value set by `write`.
 release :: MutexGuard a %1 -> RIO ()
 release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
   -- Note: the resource was initially registered with a release action that puts the original value back into the MVar.
@@ -120,22 +116,5 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
 new :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
 new _lvl a = do
   var <- MVar.newMVar a
-  newId <- Atomic.incrCounter 1 mutexIdCounter
-  pure
-    Mutex
-      { var = var,
-        id = MutexId newId
-      }
-
-----------------------------------------------------------------------------
--- Utils
-----------------------------------------------------------------------------
-
--- | Similar to 'System.IO.Resource.Linear.release', except it uses a different release action than the one registered by 'System.IO.Resource.Linear.unsafeAcquire'.
-release' :: RIO.Resource a %1 -> L.IO () -> RIO ()
-release' (Internal.UnsafeResource key _) release = Internal.RIO (\st -> L.mask_ (releaseWith key st))
-  where
-    releaseWith key rrm = L.do
-      Ur (Internal.ReleaseMap releaseMap) <- L.readIORef rrm
-      () <- release
-      L.writeIORef rrm (Internal.ReleaseMap (IntMap.delete key releaseMap))
+  id <- nextMutexId
+  pure Mutex {var, id}

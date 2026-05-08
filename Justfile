@@ -25,6 +25,10 @@ doctest:
 haddock:
     ./scripts/check_haddock_warnings.sh lib:linear-locks
 
+# Run haddock in "file watch" mode
+haddock-fw:
+    watchexec --clear --exts hs -- just haddock
+
 haddock-hackage *ARGS:
     cabal update
     cabal haddock lib:linear-locks --haddock-for-hackage {{ ARGS }}

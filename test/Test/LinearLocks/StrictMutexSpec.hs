@@ -6,23 +6,17 @@
 
 module Test.LinearLocks.StrictMutexSpec where
 
-import Control.Concurrent (ThreadId, myThreadId)
 import Control.Concurrent.MVar qualified as MVar
 import Control.Exception (SomeException, throwIO, try)
 import Control.Functor.Linear qualified as L
 import Control.Monad.IO.Class.Linear qualified as L
-import Data.Function ((&))
-import GHC.Conc (atomically)
 import LinearLocks
-import LinearLocks.Internal qualified as Internal
 import LinearLocks.Internal.StrictMutex qualified as Internal
 import LinearLocks.Mutex.Strict qualified as Mutex
-import ListT qualified
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
-import StmContainers.Set qualified as StmSet
 import System.IO.Resource.Linear (RIO)
-import Test.Hspec.Expectations.Pretty (anyIOException, errorCall, shouldThrow)
+import Test.Hspec.Expectations.Pretty (errorCall, shouldThrow)
 import "tasty-hunit-compat" Test.Tasty.HUnit
 
 -- | Doctests
@@ -93,59 +87,6 @@ unit_realeases_mvar = do
 
   isEmpty <- MVar.isEmptyMVar mutex.var
   isEmpty @?= False
-
-unit_cant_nest_lockscopes :: IO ()
-unit_cant_nest_lockscopes = do
-  let run =
-        lockScope \key -> L.do
-          L.liftSystemIO do
-            lockScope \key -> L.pure (Ur (), key)
-          L.pure (Ur (), key)
-
-  run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
-
-unit_updates_thread_ids :: IO ()
-unit_updates_thread_ids = do
-  tid <- myThreadId
-
-  getThreadIds >>= \tids -> tids @?= []
-  lockScope \key -> L.do
-    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    L.pure (Ur (), key)
-  getThreadIds >>= \tids -> tids @?= []
-
-  -- Check that the thread ID is removed even if an exception is thrown.
-  let run =
-        lockScope \key -> L.do
-          L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-          L.liftSystemIO L.$ throwIO (userError "oops")
-          L.pure (Ur (), key)
-  run `shouldThrow` anyIOException
-  getThreadIds >>= \tids -> tids @?= []
-
-  -- Check that the thread ID is removed even if when a nested lock scope is attempted
-  let run =
-        lockScope \key -> L.do
-          L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-          L.liftSystemIO do
-            lockScope \key -> L.pure (Ur (), key)
-          L.pure (Ur (), key)
-  run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
-  getThreadIds >>= \tids -> tids @?= []
-
-  -- Check that the thread ID is NOT removed if a nested lock scope is caught
-  lockScope \key -> L.do
-    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    L.liftSystemIO do
-      Left _ <- try @SomeException $ lockScope \key -> L.pure (Ur (), key)
-      pure ()
-    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    L.pure (Ur (), key)
-  getThreadIds >>= \tids -> tids @?= []
-  where
-    getThreadIds :: IO [ThreadId]
-    getThreadIds =
-      Internal.lockScopes & StmSet.listT & ListT.toList & atomically
 
 unit_rolls_back_on_exception :: IO ()
 unit_rolls_back_on_exception = do
