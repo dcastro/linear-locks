@@ -5,5 +5,5 @@ expected_warnings:
             - LinearLocks.Internal.MV_LockId
   - |
     Warning: LinearLocks.Internal.LockSet: could not find link destinations for:
-            - LinearLocks.Internal.LockSet.MV_LockSetIndex
             - LinearLocks.Internal.LockSet.V_LockSetIndex
+            - LinearLocks.Internal.LockSet.MV_LockSetIndex

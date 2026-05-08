@@ -123,7 +123,7 @@ unit_sorts_mutexes_deterministically = do
   newLockSet (m3, m2, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 1, 0]
   where
     sortedIndices :: forall set. LockSet set -> VU.Vector Int
-    sortedIndices (Internal.MkMutexSet _ indices) = VU.map (\(Internal.LockSetIndex i) -> i) indices
+    sortedIndices (Internal.MkLockSet _ indices) = VU.map (\(Internal.LockSetIndex i) -> i) indices
 
 unit_sets_can_have_mixed_mutex_types :: IO ()
 unit_sets_can_have_mixed_mutex_types = do

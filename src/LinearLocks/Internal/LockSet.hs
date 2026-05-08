@@ -88,18 +88,18 @@ newLockSet set =
       go 0
 
 acquireMany ::
-  forall keyLvl mutexLvl set.
-  (IsLockSet set, mutexLvl ~ MutexSetLevel set, keyLvl <= mutexLvl) =>
+  forall keyLvl lockLvl set.
+  (IsLockSet set, lockLvl ~ LockSetLevel set, keyLvl <= lockLvl) =>
   LockKey keyLvl %1 ->
   LockSet set ->
-  RIO (MutexGuardSet set, LockKey (mutexLvl + 1))
+  RIO (LockSetGuard set, LockKey (lockLvl + 1))
 acquireMany UnsafeLockKey (MkLockSet set indices) = L.do
   guards <- acquireInOrder indices set
   L.pure (guards, UnsafeLockKey)
 
 class IsLockSet set where
-  type MutexGuardSet set :: Type
-  type MutexSetLevel set :: Nat
+  type LockSetGuard set :: Type
+  type LockSetLevel set :: Nat
 
   collectIds :: set -> [LockId]
 
@@ -108,7 +108,7 @@ class IsLockSet set where
   --
   -- Invariants:
   --   * The indices must refer to every mutex in the set, without duplicates.
-  acquireInOrder :: VU.Vector LockSetIndex -> set -> RIO (MutexGuardSet set)
+  acquireInOrder :: VU.Vector LockSetIndex -> set -> RIO (LockSetGuard set)
 
 instance
   ( Acquirable l1,
@@ -117,8 +117,8 @@ instance
   ) =>
   IsLockSet (l1, l2)
   where
-  type MutexGuardSet (l1, l2) = (Guard l1, Guard l2)
-  type MutexSetLevel (l1, l2) = Level l1
+  type LockSetGuard (l1, l2) = (Guard l1, Guard l2)
+  type LockSetLevel (l1, l2) = Level l1
 
   collectIds (l1, l2) = [getId l1, getId l2]
 
@@ -158,8 +158,8 @@ instance
   ) =>
   IsLockSet (l1, l2, l3)
   where
-  type MutexGuardSet (l1, l2, l3) = (Guard l1, Guard l2, Guard l3)
-  type MutexSetLevel (l1, l2, l3) = Level l1
+  type LockSetGuard (l1, l2, l3) = (Guard l1, Guard l2, Guard l3)
+  type LockSetLevel (l1, l2, l3) = Level l1
 
   collectIds (l1, l2, l3) = [getId l1, getId l2, getId l3]
 
@@ -210,8 +210,8 @@ instance
   ) =>
   IsLockSet (l1, l2, l3, l4)
   where
-  type MutexGuardSet (l1, l2, l3, l4) = (Guard l1, Guard l2, Guard l3, Guard l4)
-  type MutexSetLevel (l1, l2, l3, l4) = Level l1
+  type LockSetGuard (l1, l2, l3, l4) = (Guard l1, Guard l2, Guard l3, Guard l4)
+  type LockSetLevel (l1, l2, l3, l4) = Level l1
 
   collectIds (l1, l2, l3, l4) = [getId l1, getId l2, getId l3, getId l4]
 
@@ -271,8 +271,8 @@ instance
   ) =>
   IsLockSet (l1, l2, l3, l4, l5)
   where
-  type MutexGuardSet (l1, l2, l3, l4, l5) = (Guard l1, Guard l2, Guard l3, Guard l4, Guard l5)
-  type MutexSetLevel (l1, l2, l3, l4, l5) = Level l1
+  type LockSetGuard (l1, l2, l3, l4, l5) = (Guard l1, Guard l2, Guard l3, Guard l4, Guard l5)
+  type LockSetLevel (l1, l2, l3, l4, l5) = Level l1
 
   collectIds (l1, l2, l3, l4, l5) = [getId l1, getId l2, getId l3, getId l4, getId l5]
 
