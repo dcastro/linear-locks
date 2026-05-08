@@ -6,23 +6,17 @@
 
 module Test.LinearLocks.RWLockSpec where
 
-import Control.Concurrent (ThreadId, myThreadId)
-import Control.Concurrent.MVar qualified as MVar
+import Control.Concurrent.ReadWriteLock qualified as Conc
 import Control.Exception (SomeException, throwIO, try)
 import Control.Functor.Linear qualified as L
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Control.Monad.IO.Class.Linear qualified as L
-import Data.Function ((&))
-import GHC.Conc (atomically)
+import Data.IORef qualified as IORef
 import LinearLocks
-import LinearLocks.Internal qualified as Internal
-import LinearLocks.Internal.Mutex qualified as Internal
-import LinearLocks.Mutex qualified as Mutex
-import ListT qualified
+import LinearLocks.Internal.RWLock qualified as Internal
+import LinearLocks.RWLock qualified as RWLock
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
-import StmContainers.Set qualified as StmSet
-import Test.Hspec.Expectations.Pretty (anyIOException, shouldThrow)
 import "tasty-hunit-compat" Test.Tasty.HUnit
 
 -- | Doctests
@@ -30,164 +24,181 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>> :{
 -- >>> unit_mutexes_cannot_be_locked_in_wrong_order :: IO ()
 -- >>> unit_mutexes_cannot_be_locked_in_wrong_order = do
--- >>>   m1 <- Mutex.new 2 "hello"
--- >>>   m2 <- Mutex.new 4 "world"
+-- >>>   m1 <- RWLock.new 2 "hello"
+-- >>>   m2 <- RWLock.new 4 "world"
 -- >>>   lockScope \key -> L.do
--- >>>     (mg2, key) <- lock key m2
--- >>>     (mg1, key) <- lock key m1
--- >>>     Mutex.release mg1
--- >>>     Mutex.release mg2
+-- >>>     (mg2, key) <- lock key (RWLock.AsRead m2)
+-- >>>     (mg1, key) <- lock key (RWLock.AsRead m1)
+-- >>>     RWLock.releaseRead mg1
+-- >>>     RWLock.releaseRead mg2
 -- >>>     L.pure (Ur (), key)
 -- >>> :}
 -- ...
 -- ... • Cannot satisfy: 5 <= 2
--- ... • In a stmt of a 'do' block: (mg1, key) <- lock key m1
+-- ... • In a stmt of a 'do' block:
+-- ... (mg1, key) <- lock key (RWLock.AsRead m1)
 -- ...
 unit_read_mutex :: IO ()
 unit_read_mutex = do
-  mutex <- Mutex.new 0 "hello"
+  rwl <- RWLock.new 0 "hello"
+  -- Read in "read mode"
   str <- lockScope \key -> L.do
-    (mg, key) <- lock key mutex
-    (Ur str, mg) <- Mutex.read mg
-    Mutex.release mg
+    (guard, key) <- lock key (RWLock.AsRead rwl)
+    (Ur str, guard) <- RWLock.read guard
+    RWLock.releaseRead guard
+    L.pure (Ur str, key)
+  str @?= "hello"
+
+  -- Read in "write mode"
+  str <- lockScope \key -> L.do
+    (guard, key) <- lock key (RWLock.AsWrite rwl)
+    (Ur str, guard) <- RWLock.read guard
+    RWLock.releaseWrite guard
     L.pure (Ur str, key)
   str @?= "hello"
 
 unit_write_mutex :: IO ()
 unit_write_mutex = do
-  mutex <- Mutex.new 0 "hello"
+  rwl <- RWLock.new 0 "hello"
+
+  -- Write in "write mode"
   lockScope \key -> L.do
-    (mg, key) <- lock key mutex
-    mg <- Mutex.write mg "world"
-    Mutex.release mg
+    (guard, key) <- lock key (RWLock.AsWrite rwl)
+    guard <- RWLock.write guard "world"
+    RWLock.releaseWrite guard
     L.pure (Ur (), key)
 
+  -- Read in "read mode"
   str <- lockScope \key -> L.do
-    (mg, key) <- lock key mutex
-    (Ur str, mg) <- Mutex.read mg
-    Mutex.release mg
+    (guard, key) <- lock key (RWLock.AsRead rwl)
+    (Ur str, guard) <- RWLock.read guard
+    RWLock.releaseRead guard
     L.pure (Ur str, key)
-
   str @?= "world"
 
-  str <- MVar.readMVar mutex.var
+  -- Read in "write mode"
+  str <- lockScope \key -> L.do
+    (guard, key) <- lock key (RWLock.AsWrite rwl)
+    (Ur str, guard) <- RWLock.read guard
+    RWLock.releaseWrite guard
+    L.pure (Ur str, key)
   str @?= "world"
 
-unit_realeases_mvar :: IO ()
-unit_realeases_mvar = do
-  mutex <- Mutex.new 0 "hello"
+  str <- IORef.readIORef rwl.var
+  str @?= "world"
+
+unit_realeases_ioref_in_read_mode :: IO ()
+unit_realeases_ioref_in_read_mode = do
+  rwl <- RWLock.new 0 "hello"
   lockScope \key -> L.do
-    (mg, key) <- lock key mutex
+    (mg, key) <- lock key (RWLock.AsRead rwl)
 
+    -- If the lock was acquired in "read mode",
+    -- we shouldn't be able to acquire it again in "write mode",
+    -- but we should be able to acquire it in "read mode".
     L.liftSystemIO do
-      isEmpty <- MVar.isEmptyMVar mutex.var
-      isEmpty @?= True
+      assertCanRead rwl True
+      assertCanWrite rwl False
 
-    Mutex.release mg
+    RWLock.releaseRead mg
 
+    --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
     L.liftSystemIO do
-      isEmpty <- MVar.isEmptyMVar mutex.var
-      isEmpty @?= False
+      assertCanRead rwl True
+      assertCanWrite rwl True
 
     L.pure (Ur (), key)
 
-  isEmpty <- MVar.isEmptyMVar mutex.var
-  isEmpty @?= False
+  --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
+  assertCanRead rwl True
+  assertCanWrite rwl True
 
-unit_cant_nest_lockscopes :: IO ()
-unit_cant_nest_lockscopes = do
-  let run =
-        lockScope \key -> L.do
-          L.liftSystemIO do
-            lockScope \key -> L.pure (Ur (), key)
-          L.pure (Ur (), key)
-
-  run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
-
-unit_updates_thread_ids :: IO ()
-unit_updates_thread_ids = do
-  tid <- myThreadId
-
-  getThreadIds >>= \tids -> tids @?= []
+unit_realeases_ioref_in_write_mode :: IO ()
+unit_realeases_ioref_in_write_mode = do
+  rwl <- RWLock.new 0 "hello"
   lockScope \key -> L.do
-    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    L.pure (Ur (), key)
-  getThreadIds >>= \tids -> tids @?= []
+    (mg, key) <- lock key (RWLock.AsWrite rwl)
 
-  -- Check that the thread ID is removed even if an exception is thrown.
-  let run =
-        lockScope \key -> L.do
-          L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-          L.liftSystemIO L.$ throwIO (userError "oops")
-          L.pure (Ur (), key)
-  run `shouldThrow` anyIOException
-  getThreadIds >>= \tids -> tids @?= []
-
-  -- Check that the thread ID is removed even if when a nested lock scope is attempted
-  let run =
-        lockScope \key -> L.do
-          L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-          L.liftSystemIO do
-            lockScope \key -> L.pure (Ur (), key)
-          L.pure (Ur (), key)
-  run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
-  getThreadIds >>= \tids -> tids @?= []
-
-  -- Check that the thread ID is NOT removed if a nested lock scope is caught
-  lockScope \key -> L.do
-    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
+    -- If the lock was acquired in "write mode",
+    -- we shouldn't be able to acquire it again in "write mode" or "read mode".
     L.liftSystemIO do
-      Left _ <- try @SomeException $ lockScope \key -> L.pure (Ur (), key)
-      pure ()
-    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
+      assertCanRead rwl False
+      assertCanWrite rwl False
+
+    RWLock.releaseWrite mg
+
+    --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
+    L.liftSystemIO do
+      assertCanRead rwl True
+      assertCanWrite rwl True
+
     L.pure (Ur (), key)
-  getThreadIds >>= \tids -> tids @?= []
-  where
-    getThreadIds :: IO [ThreadId]
-    getThreadIds =
-      Internal.lockScopes & StmSet.listT & ListT.toList & atomically
+
+  --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
+  assertCanRead rwl True
+  assertCanWrite rwl True
 
 unit_rolls_back_on_exception :: IO ()
 unit_rolls_back_on_exception = do
-  mutex <- Mutex.new 0 "hello"
+  rwl <- RWLock.new 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- lock key mutex
-    mg <- Mutex.write mg "world"
+    (mg, key) <- lock key (RWLock.AsWrite rwl)
+    mg <- RWLock.write mg "world"
     L.liftSystemIO L.$ throwIO (userError "oops")
-    Mutex.release mg
+    RWLock.releaseWrite mg
     L.pure (Ur (), key)
 
-  -- The MVar should have been released, and the original value should have been put back into the MVar.
-  mbResult <- MVar.tryTakeMVar mutex.var
-  mbResult @?= Just "hello"
+  -- The IORef should have been released, and the original value should have been put back into the IORef.
+  assertCanRead rwl True
+  assertCanWrite rwl True
+  mbResult <- IORef.readIORef rwl.var
+  mbResult @?= "hello"
 
 unit_rolls_back_on_imprecise_exception :: IO ()
 unit_rolls_back_on_imprecise_exception = do
-  mutex <- Mutex.new 0 "hello"
+  rwl <- RWLock.new 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- lock key mutex
-    mg <- Mutex.write mg "world"
+    (mg, key) <- lock key (RWLock.AsWrite rwl)
+    mg <- RWLock.write mg "world"
     error "err"
-    Mutex.release mg
+    RWLock.releaseWrite mg
     L.pure (Ur (), key)
 
-  -- The MVar should have been released, and the original value should have been put back into the MVar.
-  mbResult <- MVar.tryTakeMVar mutex.var
-  mbResult @?= Just "hello"
+  -- The IORef should have been released, and the original value should have been put back into the IORef.
+  assertCanRead rwl True
+  assertCanWrite rwl True
+  mbResult <- IORef.readIORef rwl.var
+  mbResult @?= "hello"
 
 unit_new_doesnt_evaluate_value_to_normal_form :: IO ()
 unit_new_doesnt_evaluate_value_to_normal_form = do
   -- This should not throw, the "error" thunk should not be evaluated
-  void $ Mutex.new @[Int] 0 [1, 2, error "oops", 4]
+  void $ RWLock.new @[Int] 0 [1, 2, error "oops", 4]
 
 unit_release_doesnt_evaluate_value_to_normal_form :: IO ()
 unit_release_doesnt_evaluate_value_to_normal_form = do
-  mutex <- Mutex.new @[Int] 0 [1]
+  mutex <- RWLock.new @[Int] 0 [1]
 
   lockScope \key -> L.do
-    (mg, key) <- lock key mutex
+    (mg, key) <- lock key (RWLock.AsWrite mutex)
     -- This should not throw, the "error" thunk should not be evaluated
-    mg <- Mutex.write mg [1, 2, error "oops", 4]
+    mg <- RWLock.write mg [1, 2, error "oops", 4]
     -- This should not throw
-    Mutex.release mg
+    RWLock.releaseWrite mg
     L.pure (Ur (), key)
+
+assertCanRead :: RWLock.RWLock lvl a -> Bool -> IO ()
+assertCanRead rwl expected = do
+  canRead <- Conc.tryAcquireRead rwl.lock
+  canRead @?= expected
+  -- Release the lock if it was acquired.
+  when canRead do
+    Conc.releaseRead rwl.lock
+
+assertCanWrite :: RWLock.RWLock lvl a -> Bool -> IO ()
+assertCanWrite rwl expected = do
+  canWrite <- Conc.tryAcquireWrite rwl.lock
+  canWrite @?= expected
+  -- Release the lock if it was acquired.
+  when canWrite do
+    Conc.releaseWrite rwl.lock

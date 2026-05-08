@@ -82,6 +82,7 @@ test-suite linear-locks-test
       tasty-discover:tasty-discover
   build-depends:
       base
+    , concurrent-extra
     , hspec-expectations-pretty-diff
     , linear-base
     , linear-locks
