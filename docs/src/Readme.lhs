@@ -14,6 +14,7 @@ Currently supported lock types:
   * "LinearLocks.Mutex"
   * "LinearLocks.Mutex.Strict"
   * "LinearLocks.RWLock"
+  * "LinearLocks.RWLock.Strict"
 
 Motivation
 ---

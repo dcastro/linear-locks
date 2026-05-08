@@ -12,7 +12,7 @@ module LinearLocks.Internal.StrictMutex where
 
 import Control.Concurrent (MVar)
 import Control.Concurrent qualified as MVar
-import Control.DeepSeq (NFData, force)
+import Control.DeepSeq (NFData)
 import Control.Functor.Linear qualified as L
 import GHC.TypeLits (Nat)
 import LinearLocks.Internal
@@ -125,17 +125,3 @@ new _lvl (mkNF -> !a) = do
   var <- MVar.newMVar a
   id <- nextLockId
   pure Mutex {var, id}
-
-----------------------------------------------------------------------------
--- Utils
-----------------------------------------------------------------------------
-
--- | A wrapper type to force the contents to be fully evaluated before being put back into the MVar.
---
--- NOTE: `NF` will only turn "shallow evaluation" into "deep evaluation".
--- You must still use a bang pattern on `NF` to force it.
-newtype NF a = UnsafeNF {unNF :: a}
-  deriving newtype (Show, Eq)
-
-mkNF :: (NFData a) => a -> NF a
-mkNF = UnsafeNF . force
