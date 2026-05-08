@@ -24,7 +24,7 @@ import GHC.TypeLits (Nat, type (+), type (<=))
 import LinearLocks.Internal
 import System.IO.Resource.Linear (RIO)
 
--- | The index of a mutex in a mutex set.
+-- | The index of a lock in a lock set.
 newtype LockSetIndex = LockSetIndex Int
   deriving newtype (Enum)
 
@@ -38,16 +38,16 @@ deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector LockSetIndex
 
 instance VU.Unbox LockSetIndex
 
--- | A set of mutexes with the same level that can be acquired together with 'acquireMany'.
+-- | A set of locks with the same level that can be acquired together with 'acquireMany'.
 data LockSet set where
   MkLockSet :: set -> VU.Vector LockSetIndex -> LockSet set
 
--- | Creates a 'LockSet' from a set of mutexes.
--- All mutexes must have the same level.
+-- | Creates a 'LockSet' from a set of locks.
+-- All locks must have the same level.
 --
--- Mutexes in a 'LockSet' can be acquired simultaneously using 'acquireMany'.
+-- Locks in a 'LockSet' can be acquired simultaneously using 'acquireMany'.
 --
--- Fails if the set contains duplicate mutexes.
+-- Fails if the set contains duplicate locks.
 --
 -- >>> import LinearLocks.Mutex qualified as Mutex
 -- >>> m1 <- Mutex.new 1 "a"
@@ -57,16 +57,16 @@ data LockSet set where
 newLockSet :: forall m set. (IsLockSet set, MonadFail m) => set -> m (LockSet set)
 newLockSet set =
   if hasDups
-    then fail "LockSet: duplicate mutexes are not allowed"
+    then fail "LockSet: duplicate locks are not allowed"
     else pure $ MkLockSet set sortedIndices
   where
     (hasDups, sortedIndices) = runST do
       idsAndIndices <- VU.thaw $ VU.fromList $ collectIds set `zip` [LockSetIndex 0 ..]
 
-      -- Sort by mutex IDs
+      -- Sort by lock IDs
       Sort.sortBy (compare `on` fst) idsAndIndices
 
-      -- Check whether this set contains duplicate mutexes.
+      -- Check whether this set contains duplicate locks.
       -- NOTE: the vector must already be sorted.
       hasDups <- hasDuplicateIds idsAndIndices
 
@@ -104,10 +104,10 @@ class IsLockSet set where
   collectIds :: set -> [LockId]
 
   -- | Acquires the locks in the set in the given order.
-  -- E.g. `acquireInOrder [1, 3, 2]` will acquire the first mutex in the set, then the third, then the second.
+  -- E.g. `acquireInOrder [1, 3, 2]` will acquire the first lock in the set, then the third, then the second.
   --
   -- Invariants:
-  --   * The indices must refer to every mutex in the set, without duplicates.
+  --   * The indices must refer to every lock in the set, without duplicates.
   acquireInOrder :: VU.Vector LockSetIndex -> set -> RIO (LockSetGuard set)
 
 instance

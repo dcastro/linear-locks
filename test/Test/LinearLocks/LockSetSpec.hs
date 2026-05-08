@@ -21,8 +21,8 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- | Doctests
 --
 -- >>> :{
--- >>> unit_mutexes_in_a_set_must_have_the_same_level :: IO ()
--- >>> unit_mutexes_in_a_set_must_have_the_same_level = do
+-- >>> unit_locks_in_a_set_must_have_the_same_level :: IO ()
+-- >>> unit_locks_in_a_set_must_have_the_same_level = do
 -- >>>   m1 <- Mutex.new 2 "hello"
 -- >>>   m2 <- Mutex.new 3 "world"
 -- >>>   set <- newLockSet (m1, m2)
@@ -32,8 +32,8 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- ... • Couldn't match type ‘2’ with ‘3’
 -- ...     arising from a use of ‘newLockSet’
 -- ...
-unit_read_mutex_set :: IO ()
-unit_read_mutex_set = do
+unit_read_lock_set :: IO ()
+unit_read_lock_set = do
   m1 <- Mutex.new 0 "m1"
   m2 <- Mutex.new 0 "m2"
   m3 <- Mutex.new 0 "m3"
@@ -56,8 +56,8 @@ unit_read_mutex_set = do
     Mutex.release mg3
     L.pure (Ur (), key)
 
-unit_write_mutex_set :: IO ()
-unit_write_mutex_set = do
+unit_write_lock_set :: IO ()
+unit_write_lock_set = do
   m1 <- Mutex.new 0 "m1"
   m2 <- Mutex.new 0 "m2"
   m3 <- Mutex.new 0 "m3"
@@ -92,8 +92,8 @@ unit_write_mutex_set = do
     Mutex.release mg1
     L.pure (Ur (), key)
 
-unit_assigns_unique_mutex_ids :: IO ()
-unit_assigns_unique_mutex_ids = do
+unit_assigns_unique_lock_ids :: IO ()
+unit_assigns_unique_lock_ids = do
   m1 <- Mutex.new 0 ""
   m2 <- Mutex.new 0 ""
   m3 <- Mutex.new 0 ""
@@ -102,15 +102,15 @@ unit_assigns_unique_mutex_ids = do
   m2.id `shouldNotBe` m3.id
   m1.id `shouldNotBe` m3.id
 
-unit_throws_when_mutex_set_contains_duplicates :: IO ()
-unit_throws_when_mutex_set_contains_duplicates = do
+unit_throws_when_lock_set_contains_duplicates :: IO ()
+unit_throws_when_lock_set_contains_duplicates = do
   m1 <- Mutex.new 0 ""
   m2 <- Mutex.new 0 ""
 
-  newLockSet (m1, m2, m1) `shouldThrow` \(err :: IOError) -> err == userError "LockSet: duplicate mutexes are not allowed"
+  newLockSet (m1, m2, m1) `shouldThrow` \(err :: IOError) -> err == userError "LockSet: duplicate locks are not allowed"
 
-unit_sorts_mutexes_deterministically :: IO ()
-unit_sorts_mutexes_deterministically = do
+unit_sorts_locks_deterministically :: IO ()
+unit_sorts_locks_deterministically = do
   m1 <- Mutex.new 0 ""
   m2 <- Mutex.new 0 ""
   m3 <- Mutex.new 0 ""
@@ -125,8 +125,8 @@ unit_sorts_mutexes_deterministically = do
     sortedIndices :: forall set. LockSet set -> VU.Vector Int
     sortedIndices (Internal.MkLockSet _ indices) = VU.map (\(Internal.LockSetIndex i) -> i) indices
 
-unit_sets_can_have_mixed_mutex_types :: IO ()
-unit_sets_can_have_mixed_mutex_types = do
+unit_sets_can_have_mixed_lock_types :: IO ()
+unit_sets_can_have_mixed_lock_types = do
   m1 <- StrictMutex.new 0 "hello"
   m2 <- Mutex.new @Int 0 99
   set <- newLockSet (m1, m2)

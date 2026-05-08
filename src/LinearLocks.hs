@@ -24,7 +24,7 @@ example = do
   --
   -- Enter a lockscope
   lockScope \key -> Linear.do
-    -- Acquire mutexes
+    -- Acquire locks
     (configGuard, key) <- acquire key configMutex
     (dbGuard, key) <- acquire key dbMutex
     --
@@ -36,7 +36,7 @@ example = do
     Linear.liftSystemIO do
       putStrLn $ "Verbose mode was: " <> show (verbose config)
     --
-    -- Release mutexes
+    -- Release locks
     Mutex.release configGuard
     Mutex.release dbGuard
     Linear.pure (Ur (), key)

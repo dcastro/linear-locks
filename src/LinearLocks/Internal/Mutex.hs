@@ -33,7 +33,7 @@ data Mutex (lvl :: Nat) a = Mutex
     id :: LockId
   }
 
--- | A t`MutexGuard` represents the ownership of a locked mutex.
+-- | A t`MutexGuard` represents the ownership of a mutex.
 --
 -- It can be used to read/write the mutex while the lock is held.
 --
