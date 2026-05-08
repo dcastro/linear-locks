@@ -117,7 +117,7 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur (mkNF -> !newValue)))
 -- The @lvl@ parameter determines the order in which this mutex can be acquired relative to other mutexes.
 --
 -- It does not have to be unique, multiple mutexes can have the same level.
--- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
+-- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.acquireMany'.
 --
 -- This function fully evaluates the initial value to Normal Form.
 new :: forall a. (NFData a) => forall (lvl :: Nat) -> a -> IO (Mutex lvl a)

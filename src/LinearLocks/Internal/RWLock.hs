@@ -67,7 +67,7 @@ data RWLock (lvl :: Nat) a = RWLock
 -- The @lvl@ parameter determines the order in which this lock can be acquired relative to other locks.
 --
 -- It does not have to be unique, multiple locks can have the same level.
--- Locks with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
+-- Locks with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.acquireMany'.
 new :: forall a. forall (lvl :: Nat) -> a -> IO (RWLock lvl a)
 new _lvl a = do
   lock <- Conc.new

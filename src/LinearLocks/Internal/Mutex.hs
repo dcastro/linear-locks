@@ -112,7 +112,7 @@ release (MutexGuard ((Internal.UnsafeResource key mr)) (Ur newValue)) = L.do
 -- The @lvl@ parameter determines the order in which this mutex can be acquired relative to other mutexes.
 --
 -- It does not have to be unique, multiple mutexes can have the same level.
--- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
+-- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.acquireMany'.
 new :: forall a. forall (lvl :: Nat) -> a -> IO (Mutex lvl a)
 new _lvl a = do
   var <- MVar.newMVar a

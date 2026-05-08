@@ -94,7 +94,7 @@ example5 = do
   m2 <- Mutex.new 0 "hello world"
   mutexSet <- newMutexSet (m1, m2)
   lockScope \key -> Linear.do
-    ((mg1, mg2), key) <- lockMany key mutexSet
+    ((mg1, mg2), key) <- acquireMany key mutexSet
     (Ur count, mg1) <- Mutex.read mg1
     (Ur str, mg2) <- Mutex.read mg2
 

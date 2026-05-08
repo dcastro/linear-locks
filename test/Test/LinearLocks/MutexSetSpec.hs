@@ -40,7 +40,7 @@ unit_read_mutex_set = do
   set <- newMutexSet (m1, m2, m3)
 
   lockScope \key -> L.do
-    ((mg1, mg2, mg3), key) <- lockMany key set
+    ((mg1, mg2, mg3), key) <- acquireMany key set
 
     (Ur str1, mg1) <- Mutex.read mg1
     (Ur str2, mg2) <- Mutex.read mg2
@@ -64,7 +64,7 @@ unit_write_mutex_set = do
   set <- newMutexSet (m3, m2, m1)
 
   lockScope \key -> L.do
-    ((mg3, mg2, mg1), key) <- lockMany key set
+    ((mg3, mg2, mg1), key) <- acquireMany key set
 
     mg3 <- Mutex.write mg3 "m3 updated"
     mg2 <- Mutex.write mg2 "m2 updated"
@@ -76,7 +76,7 @@ unit_write_mutex_set = do
     L.pure (Ur (), key)
 
   lockScope \key -> L.do
-    ((mg3, mg2, mg1), key) <- lockMany key set
+    ((mg3, mg2, mg1), key) <- acquireMany key set
 
     (Ur str3, mg3) <- Mutex.read mg3
     (Ur str2, mg2) <- Mutex.read mg2
@@ -132,7 +132,7 @@ unit_sets_can_have_mixed_mutex_types = do
   set <- newMutexSet (m1, m2)
 
   lockScope \key -> L.do
-    ((mg1, mg2), key) <- lockMany key set
+    ((mg1, mg2), key) <- acquireMany key set
 
     (Ur res1, mg1) <- StrictMutex.read mg1
     (Ur res2, mg2) <- Mutex.read mg2

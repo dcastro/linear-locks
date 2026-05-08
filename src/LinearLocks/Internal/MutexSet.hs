@@ -38,14 +38,14 @@ deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexSetIndex
 
 instance VU.Unbox MutexSetIndex
 
--- | A set of mutexes with the same level that can be locked together with 'lockMany'.
+-- | A set of mutexes with the same level that can be locked together with 'acquireMany'.
 data MutexSet set where
   MkMutexSet :: set -> VU.Vector MutexSetIndex -> MutexSet set
 
 -- | Creates a 'MutexSet' from a set of mutexes.
 -- All mutexes must have the same level.
 --
--- Mutexes in a 'MutexSet' can be locked simultaneously using 'lockMany'.
+-- Mutexes in a 'MutexSet' can be locked simultaneously using 'acquireMany'.
 --
 -- Fails if the set contains duplicate mutexes.
 --
@@ -87,13 +87,13 @@ newMutexSet set =
                   else go (i + 1)
       go 0
 
-lockMany ::
+acquireMany ::
   forall keyLvl mutexLvl set.
   (IsMutexSet set, mutexLvl ~ MutexSetLevel set, keyLvl <= mutexLvl) =>
   MutexKey keyLvl %1 ->
   MutexSet set ->
   RIO (MutexGuardSet set, MutexKey (mutexLvl + 1))
-lockMany UnsafeMutexKey (MkMutexSet set indices) = L.do
+acquireMany UnsafeMutexKey (MkMutexSet set indices) = L.do
   guards <- lockInOrder indices set
   L.pure (guards, UnsafeMutexKey)
 

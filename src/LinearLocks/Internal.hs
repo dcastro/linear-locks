@@ -42,7 +42,7 @@ import System.IO.Resource.Linear.Internal qualified as RIOInternal
 -- | A key used to acquire locks.
 -- A key of level @n@ can only acquire locks of level @n@ or higher.
 --
--- Acquiring a mutex with `acquire` or `LinearLocks.lockMany` will consume the key and return a new key with an increased level,
+-- Acquiring a mutex with `acquire` or `LinearLocks.acquireMany` will consume the key and return a new key with an increased level,
 -- ensuring locks are always acquired in a consistent order.
 data MutexKey (lvl :: Nat)
   = -- Notes:
@@ -65,7 +65,7 @@ deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexId
 instance VU.Unbox MutexId
 
 -- | Creates a new lock scope with a key of level 0, and runs the given function with it.
---  The key can be used to acquire locks with `acquire` and `LinearLocks.lockMany`.
+--  The key can be used to acquire locks with `acquire` and `LinearLocks.acquireMany`.
 -- The final key must be returned.
 --
 -- Will throw a t`NestedLocksScopeException` if a nested `lockScope` is created at runtime.

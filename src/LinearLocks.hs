@@ -56,7 +56,7 @@ module LinearLocks
     MutexSet,
     IsMutexSet (), -- Note: do not export the typeclass members
     newMutexSet,
-    lockMany,
+    acquireMany,
   )
 where
 
