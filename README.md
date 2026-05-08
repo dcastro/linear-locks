@@ -88,13 +88,13 @@ back. Acquiring `Mutex 1 DbConn` then gives us a `MutexKey 2`.
 
 ``` haskell
   lockScope \key -> Linear.do
-    --                          ↓ Consumes `MutexKey 0` to lock a `Mutex 0`
-    (configGuard, key) <- lock key configMutex
+    --                          ↓ Consumes `MutexKey 0` to acquire a `Mutex 0`
+    (configGuard, key) <- acquire key configMutex
     --             ↑ Returns `MutexKey 1`
 
 
-    --                      ↓ Consumes `MutexKey 1` to lock a `Mutex 1`
-    (dbGuard, key) <- lock key dbMutex
+    --                      ↓ Consumes `MutexKey 1` to acquire a `Mutex 1`
+    (dbGuard, key) <- acquire key dbMutex
     --         ↑ Returns `MutexKey 2`
 
     Mutex.release configGuard
@@ -135,7 +135,7 @@ The guard is also linearly typed, thus ensuring:
 
 ``` haskell
   lockScope \key -> Linear.do
-    (configGuard, key) <- lock key configMutex
+    (configGuard, key) <- acquire key configMutex
 
     (Ur config, configGuard) <- Mutex.read configGuard
 
@@ -195,7 +195,7 @@ to lift `IO` actions into the lock scope.
 
 ``` haskell
   lockScope \key -> Linear.do
-    (configGuard, key) <- lock key configMutex
+    (configGuard, key) <- acquire key configMutex
     (Ur config, configGuard) <- Mutex.read configGuard
 
     Ur newVerbose <- Linear.liftSystemIOU do

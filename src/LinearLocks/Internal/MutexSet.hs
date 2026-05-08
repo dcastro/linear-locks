@@ -111,8 +111,8 @@ class IsMutexSet set where
   lockInOrder :: VU.Vector MutexSetIndex -> set -> RIO (MutexGuardSet set)
 
 instance
-  ( Lockable l1,
-    Lockable l2,
+  ( Acquirable l1,
+    Acquirable l2,
     Level l1 ~ Level l2
   ) =>
   IsMutexSet (l1, l2)
@@ -133,12 +133,12 @@ instance
         case index of
           0 -> modifyM \case
             (Nothing, g2) -> L.do
-              g1 <- unsafeLock l1
+              g1 <- unsafeAcquire l1
               L.pure (Just g1, g2)
             guards -> releaseAndFail guards (dupIndex index)
           1 -> modifyM \case
             (g1, Nothing) -> L.do
-              g2 <- unsafeLock l2
+              g2 <- unsafeAcquire l2
               L.pure (g1, Just g2)
             guards -> releaseAndFail guards (dupIndex index)
           _ -> L.lift (failRIO (invalidIndex index))
@@ -150,9 +150,9 @@ instance
         failRIO errMsg
 
 instance
-  ( Lockable l1,
-    Lockable l2,
-    Lockable l3,
+  ( Acquirable l1,
+    Acquirable l2,
+    Acquirable l3,
     Level l1 ~ Level l2,
     Level l1 ~ Level l3
   ) =>
@@ -174,19 +174,19 @@ instance
         case index of
           0 -> modifyM \case
             (Nothing, g2, g3) -> L.do
-              g1 <- unsafeLock l1
+              g1 <- unsafeAcquire l1
               L.pure (Just g1, g2, g3)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           1 -> modifyM \case
             (g1, Nothing, g3) -> L.do
-              g2 <- unsafeLock l2
+              g2 <- unsafeAcquire l2
               L.pure (g1, Just g2, g3)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           2 -> modifyM \case
             (g1, g2, Nothing) -> L.do
-              g3 <- unsafeLock l3
+              g3 <- unsafeAcquire l3
               L.pure (g1, g2, Just g3)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
@@ -200,10 +200,10 @@ instance
         failRIO errMsg
 
 instance
-  ( Lockable l1,
-    Lockable l2,
-    Lockable l3,
-    Lockable l4,
+  ( Acquirable l1,
+    Acquirable l2,
+    Acquirable l3,
+    Acquirable l4,
     Level l1 ~ Level l2,
     Level l1 ~ Level l3,
     Level l1 ~ Level l4
@@ -226,25 +226,25 @@ instance
         case index of
           0 -> modifyM \case
             (Nothing, g2, g3, g4) -> L.do
-              g1 <- unsafeLock l1
+              g1 <- unsafeAcquire l1
               L.pure (Just g1, g2, g3, g4)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           1 -> modifyM \case
             (g1, Nothing, g3, g4) -> L.do
-              g2 <- unsafeLock l2
+              g2 <- unsafeAcquire l2
               L.pure (g1, Just g2, g3, g4)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           2 -> modifyM \case
             (g1, g2, Nothing, g4) -> L.do
-              g3 <- unsafeLock l3
+              g3 <- unsafeAcquire l3
               L.pure (g1, g2, Just g3, g4)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           3 -> modifyM \case
             (g1, g2, g3, Nothing) -> L.do
-              g4 <- unsafeLock l4
+              g4 <- unsafeAcquire l4
               L.pure (g1, g2, g3, Just g4)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
@@ -259,11 +259,11 @@ instance
         failRIO errMsg
 
 instance
-  ( Lockable l1,
-    Lockable l2,
-    Lockable l3,
-    Lockable l4,
-    Lockable l5,
+  ( Acquirable l1,
+    Acquirable l2,
+    Acquirable l3,
+    Acquirable l4,
+    Acquirable l5,
     Level l1 ~ Level l2,
     Level l1 ~ Level l3,
     Level l1 ~ Level l4,
@@ -287,31 +287,31 @@ instance
         case index of
           0 -> modifyM \case
             (Nothing, g2, g3, g4, g5) -> L.do
-              g1 <- unsafeLock l1
+              g1 <- unsafeAcquire l1
               L.pure (Just g1, g2, g3, g4, g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           1 -> modifyM \case
             (g1, Nothing, g3, g4, g5) -> L.do
-              g2 <- unsafeLock l2
+              g2 <- unsafeAcquire l2
               L.pure (g1, Just g2, g3, g4, g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           2 -> modifyM \case
             (g1, g2, Nothing, g4, g5) -> L.do
-              g3 <- unsafeLock l3
+              g3 <- unsafeAcquire l3
               L.pure (g1, g2, Just g3, g4, g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           3 -> modifyM \case
             (g1, g2, g3, Nothing, g5) -> L.do
-              g4 <- unsafeLock l4
+              g4 <- unsafeAcquire l4
               L.pure (g1, g2, g3, Just g4, g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)
           4 -> modifyM \case
             (g1, g2, g3, g4, Nothing) -> L.do
-              g5 <- unsafeLock l5
+              g5 <- unsafeAcquire l5
               L.pure (g1, g2, g3, g4, Just g5)
             guards -> L.do
               releaseAndFail guards (dupIndex index)

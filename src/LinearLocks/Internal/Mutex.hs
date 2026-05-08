@@ -53,14 +53,14 @@ data MutexResource a = MutexResource
     var :: MVar a
   }
 
-instance Lockable (Mutex lvl a) where
+instance Acquirable (Mutex lvl a) where
   type Guard (Mutex lvl a) = MutexGuard a
   type Level (Mutex lvl a) = lvl
 
   getId m = m.id
 
-  unsafeLock :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
-  unsafeLock m = L.do
+  unsafeAcquire :: forall lvl a. Mutex lvl a -> RIO (MutexGuard a)
+  unsafeAcquire m = L.do
     -- Note: we have to match on `UnsafeResource` so we can extract the `guard.initialValue`
     Internal.UnsafeResource key guard <- RIO.unsafeAcquire acq rel
     L.pure

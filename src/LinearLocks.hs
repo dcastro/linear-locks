@@ -25,8 +25,8 @@ example = do
   -- Enter a lockscope
   lockScope \key -> Linear.do
     -- Acquire mutexes
-    (configGuard, key) <- lock key configMutex
-    (dbGuard, key) <- lock key dbMutex
+    (configGuard, key) <- acquire key configMutex
+    (dbGuard, key) <- acquire key dbMutex
     --
     -- Read/write
     (Ur config, configGuard) <- Mutex.read configGuard
@@ -49,8 +49,8 @@ module LinearLocks
     lockScope,
     MutexKey,
     NestedLocksScopeException (..),
-    lock,
-    Lockable (), -- Note: do not export the typeclass members
+    acquire,
+    Acquirable (), -- Note: do not export the typeclass members
 
     -- * Mutex sets
     MutexSet,

@@ -42,7 +42,7 @@ import System.IO.Resource.Linear.Internal qualified as RIOInternal
 -- | A key used to acquire locks.
 -- A key of level @n@ can only acquire locks of level @n@ or higher.
 --
--- Acquiring a mutex with `lock` or `LinearLocks.lockMany` will consume the key and return a new key with an increased level,
+-- Acquiring a mutex with `acquire` or `LinearLocks.lockMany` will consume the key and return a new key with an increased level,
 -- ensuring locks are always acquired in a consistent order.
 data MutexKey (lvl :: Nat)
   = -- Notes:
@@ -65,7 +65,7 @@ deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexId
 instance VU.Unbox MutexId
 
 -- | Creates a new lock scope with a key of level 0, and runs the given function with it.
---  The key can be used to lock mutexes with `lock` and `LinearLocks.lockMany`.
+--  The key can be used to acquire locks with `acquire` and `LinearLocks.lockMany`.
 -- The final key must be returned.
 --
 -- Will throw a t`NestedLocksScopeException` if a nested `lockScope` is created at runtime.
@@ -125,25 +125,25 @@ instance Exception NestedLocksScopeException where
 
 -- | Acquire a mutex.
 -- Consumes the key and return a new key (with an increased level).
-lock ::
-  forall keyLvl lockable.
-  (Lockable lockable) =>
-  (keyLvl <= Level lockable) =>
+acquire ::
+  forall keyLvl acquirable.
+  (Acquirable acquirable) =>
+  (keyLvl <= Level acquirable) =>
   MutexKey keyLvl %1 ->
-  lockable ->
-  RIO (Guard lockable, MutexKey (Level lockable + 1))
-lock UnsafeMutexKey m = L.do
-  guard <- unsafeLock m
+  acquirable ->
+  RIO (Guard acquirable, MutexKey (Level acquirable + 1))
+acquire UnsafeMutexKey m = L.do
+  guard <- unsafeAcquire m
   L.pure (guard, UnsafeMutexKey)
 
-class (Releasable (Guard lockable)) => Lockable lockable where
-  type Guard lockable :: Type
-  type Level lockable :: Nat
+class (Releasable (Guard acquirable)) => Acquirable acquirable where
+  type Guard acquirable :: Type
+  type Level acquirable :: Nat
 
-  getId :: lockable -> MutexId
+  getId :: acquirable -> MutexId
 
   -- | This is marked as unsafe because it does not consume a `MutexKey`.
-  unsafeLock :: lockable -> RIO (Guard lockable)
+  unsafeAcquire :: acquirable -> RIO (Guard acquirable)
 
 class Releasable guard where
   -- Design decision: `doRelease` generalizes over releasing any kind of mutex, but we don't export it.

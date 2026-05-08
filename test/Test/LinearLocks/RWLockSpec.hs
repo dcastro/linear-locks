@@ -27,8 +27,8 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>>   m1 <- RWLock.new 2 "hello"
 -- >>>   m2 <- RWLock.new 4 "world"
 -- >>>   lockScope \key -> L.do
--- >>>     (mg2, key) <- lock key (RWLock.AsRead m2)
--- >>>     (mg1, key) <- lock key (RWLock.AsRead m1)
+-- >>>     (mg2, key) <- acquire key (RWLock.AsRead m2)
+-- >>>     (mg1, key) <- acquire key (RWLock.AsRead m1)
 -- >>>     RWLock.releaseRead mg1
 -- >>>     RWLock.releaseRead mg2
 -- >>>     L.pure (Ur (), key)
@@ -36,14 +36,14 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- ...
 -- ... • Cannot satisfy: 5 <= 2
 -- ... • In a stmt of a 'do' block:
--- ... (mg1, key) <- lock key (RWLock.AsRead m1)
+-- ... (mg1, key) <- acquire key (RWLock.AsRead m1)
 -- ...
 unit_read_mutex :: IO ()
 unit_read_mutex = do
   rwl <- RWLock.new 0 "hello"
   -- Read in "read mode"
   str <- lockScope \key -> L.do
-    (guard, key) <- lock key (RWLock.AsRead rwl)
+    (guard, key) <- acquire key (RWLock.AsRead rwl)
     (Ur str, guard) <- RWLock.read guard
     RWLock.releaseRead guard
     L.pure (Ur str, key)
@@ -51,7 +51,7 @@ unit_read_mutex = do
 
   -- Read in "write mode"
   str <- lockScope \key -> L.do
-    (guard, key) <- lock key (RWLock.AsWrite rwl)
+    (guard, key) <- acquire key (RWLock.AsWrite rwl)
     (Ur str, guard) <- RWLock.read guard
     RWLock.releaseWrite guard
     L.pure (Ur str, key)
@@ -63,14 +63,14 @@ unit_write_mutex = do
 
   -- Write in "write mode"
   lockScope \key -> L.do
-    (guard, key) <- lock key (RWLock.AsWrite rwl)
+    (guard, key) <- acquire key (RWLock.AsWrite rwl)
     guard <- RWLock.write guard "world"
     RWLock.releaseWrite guard
     L.pure (Ur (), key)
 
   -- Read in "read mode"
   str <- lockScope \key -> L.do
-    (guard, key) <- lock key (RWLock.AsRead rwl)
+    (guard, key) <- acquire key (RWLock.AsRead rwl)
     (Ur str, guard) <- RWLock.read guard
     RWLock.releaseRead guard
     L.pure (Ur str, key)
@@ -78,7 +78,7 @@ unit_write_mutex = do
 
   -- Read in "write mode"
   str <- lockScope \key -> L.do
-    (guard, key) <- lock key (RWLock.AsWrite rwl)
+    (guard, key) <- acquire key (RWLock.AsWrite rwl)
     (Ur str, guard) <- RWLock.read guard
     RWLock.releaseWrite guard
     L.pure (Ur str, key)
@@ -91,7 +91,7 @@ unit_realeases_ioref_in_read_mode :: IO ()
 unit_realeases_ioref_in_read_mode = do
   rwl <- RWLock.new 0 "hello"
   lockScope \key -> L.do
-    (mg, key) <- lock key (RWLock.AsRead rwl)
+    (mg, key) <- acquire key (RWLock.AsRead rwl)
 
     -- If the lock was acquired in "read mode",
     -- we shouldn't be able to acquire it again in "write mode",
@@ -117,7 +117,7 @@ unit_realeases_ioref_in_write_mode :: IO ()
 unit_realeases_ioref_in_write_mode = do
   rwl <- RWLock.new 0 "hello"
   lockScope \key -> L.do
-    (mg, key) <- lock key (RWLock.AsWrite rwl)
+    (mg, key) <- acquire key (RWLock.AsWrite rwl)
 
     -- If the lock was acquired in "write mode",
     -- we shouldn't be able to acquire it again in "write mode" or "read mode".
@@ -142,7 +142,7 @@ unit_rolls_back_on_exception :: IO ()
 unit_rolls_back_on_exception = do
   rwl <- RWLock.new 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- lock key (RWLock.AsWrite rwl)
+    (mg, key) <- acquire key (RWLock.AsWrite rwl)
     mg <- RWLock.write mg "world"
     L.liftSystemIO L.$ throwIO (userError "oops")
     RWLock.releaseWrite mg
@@ -158,7 +158,7 @@ unit_rolls_back_on_imprecise_exception :: IO ()
 unit_rolls_back_on_imprecise_exception = do
   rwl <- RWLock.new 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- lock key (RWLock.AsWrite rwl)
+    (mg, key) <- acquire key (RWLock.AsWrite rwl)
     mg <- RWLock.write mg "world"
     error "err"
     RWLock.releaseWrite mg
@@ -180,7 +180,7 @@ unit_release_doesnt_evaluate_value_to_normal_form = do
   mutex <- RWLock.new @[Int] 0 [1]
 
   lockScope \key -> L.do
-    (mg, key) <- lock key (RWLock.AsWrite mutex)
+    (mg, key) <- acquire key (RWLock.AsWrite mutex)
     -- This should not throw, the "error" thunk should not be evaluated
     mg <- RWLock.write mg [1, 2, error "oops", 4]
     -- This should not throw
