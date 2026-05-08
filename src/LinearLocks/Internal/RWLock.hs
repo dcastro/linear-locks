@@ -169,10 +169,10 @@ instance Readable (WriteGuard a) where
   read (WriteGuard resource (Ur newValue) var) =
     L.pure (Ur newValue, WriteGuard {resource, newValue = Ur newValue, var})
 
--- | Writes a new value to the 'RWLock', which will be committed when the guard is released.
+-- | Writes a new value to the t'RWLock', which will be committed when the guard is released.
 --
 -- If an exception is thrown after `write` but before `releaseWrite`,
--- the 'RWLock' will be rolled back to its original state.
+-- the t'RWLock' will be rolled back to its original state.
 write :: WriteGuard a %1 -> a -> RIO (WriteGuard a)
 write (WriteGuard resource (Ur _) var) newValue =
   L.pure (WriteGuard {resource, newValue = Ur newValue, var})
