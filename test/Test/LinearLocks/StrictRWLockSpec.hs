@@ -6,17 +6,21 @@
 
 module Test.LinearLocks.StrictRWLockSpec where
 
+import Control.Concurrent.MVar qualified as MVar
 import Control.Concurrent.ReadWriteLock qualified as Conc
 import Control.Exception (SomeException, throwIO, try)
 import Control.Functor.Linear qualified as L
-import Control.Monad (void, when)
+import Control.Monad (when)
 import Control.Monad.IO.Class.Linear qualified as L
 import Data.IORef qualified as IORef
 import LinearLocks
-import LinearLocks.Internal.RWLock qualified as Internal
-import LinearLocks.RWLock qualified as RWLock
+import LinearLocks.Internal qualified as Internal
+import LinearLocks.Internal.StrictRWLock qualified as Internal
+import LinearLocks.RWLock.Strict qualified as RWLock
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
+import System.IO.Resource.Linear (RIO)
+import Test.Hspec.Expectations.Pretty (errorCall, shouldThrow)
 import "tasty-hunit-compat" Test.Tasty.HUnit
 
 -- | Doctests
@@ -84,7 +88,7 @@ unit_write_mutex = do
   str @?= "world"
 
   str <- IORef.readIORef rwl.var
-  str @?= "world"
+  str.unNF @?= "world"
 
 unit_realeases_ioref_in_read_mode :: IO ()
 unit_realeases_ioref_in_read_mode = do
@@ -151,7 +155,7 @@ unit_rolls_back_on_exception = do
   assertCanRead rwl True
   assertCanWrite rwl True
   mbResult <- IORef.readIORef rwl.var
-  mbResult @?= "hello"
+  mbResult.unNF @?= "hello"
 
 unit_rolls_back_on_imprecise_exception :: IO ()
 unit_rolls_back_on_imprecise_exception = do
@@ -167,24 +171,38 @@ unit_rolls_back_on_imprecise_exception = do
   assertCanRead rwl True
   assertCanWrite rwl True
   mbResult <- IORef.readIORef rwl.var
-  mbResult @?= "hello"
+  mbResult.unNF @?= "hello"
 
-unit_new_doesnt_evaluate_value_to_normal_form :: IO ()
-unit_new_doesnt_evaluate_value_to_normal_form = do
-  -- This should not throw, the "error" thunk should not be evaluated
-  void $ RWLock.new @[Int] 0 [1, 2, error "oops", 4]
+unit_new_evaluates_value_to_normal_form :: IO ()
+unit_new_evaluates_value_to_normal_form = do
+  RWLock.new @[Int] 0 [1, 2, error "oops", 4]
+    `shouldThrow` errorCall "oops"
 
-unit_release_doesnt_evaluate_value_to_normal_form :: IO ()
-unit_release_doesnt_evaluate_value_to_normal_form = do
+unit_release_evaluates_value_to_normal_form :: IO ()
+unit_release_evaluates_value_to_normal_form = do
   mutex <- RWLock.new @[Int] 0 [1]
 
-  lockScope \key -> L.do
-    (mg, key) <- RWLock.acquireWrite key mutex
-    -- This should not throw, the "error" thunk should not be evaluated
-    mg <- RWLock.write mg [1, 2, error "oops", 4]
-    -- This should not throw
-    RWLock.releaseWrite mg
-    L.pure (Ur (), key)
+  logs <- MVar.newMVar @[String] []
+  let logMsg :: String -> RIO ()
+      logMsg msg = L.liftSystemIO do
+        MVar.modifyMVar_ logs \logs -> pure (logs <> [msg])
+
+  let run =
+        lockScope \key -> L.do
+          (mg, key) <- RWLock.acquireWrite key mutex
+          logMsg "ran 'acquire'"
+          mg <- RWLock.write mg [1, 2, error "oops", 4]
+          logMsg "ran 'write'"
+          RWLock.releaseWrite mg
+          logMsg "ran 'release'"
+          L.pure (Ur (), key)
+
+  run `shouldThrow` errorCall "oops"
+
+  -- The exception should be thrown WHILE running `release`.
+  -- `write` should NOT throw.
+  msgs <- MVar.takeMVar logs
+  msgs @?= ["ran 'acquire'", "ran 'write'"]
 
 assertCanRead :: RWLock.RWLock lvl a -> Bool -> IO ()
 assertCanRead rwl expected = do
