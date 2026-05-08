@@ -123,7 +123,7 @@ data NestedLocksScopeException = NestedLocksScopeException
 instance Exception NestedLocksScopeException where
   displayException NestedLocksScopeException = "Nested lock scopes are not allowed"
 
--- | Acquire a mutex.
+-- | Acquires a lock.
 -- Consumes the key and return a new key (with an increased level).
 acquire ::
   forall keyLvl acquirable.
