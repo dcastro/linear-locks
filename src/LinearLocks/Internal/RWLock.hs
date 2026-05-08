@@ -42,7 +42,7 @@ example = do
   -- Enter a lockscope
   lockScope \key -> Linear.do
     -- Acquire the lock in "write mode"
-    (guard, key) <- acquire key (RWLock.AsWrite configLock)
+    (guard, key) <- RWLock.acquireWrite key configLock
     --
     -- Read/write
     (Ur config, guard) <- RWLock.read guard

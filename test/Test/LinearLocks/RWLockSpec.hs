@@ -35,8 +35,7 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>> :}
 -- ...
 -- ... • Cannot satisfy: 5 <= 2
--- ... • In a stmt of a 'do' block:
--- ... (g1, key) <- RWLock.acquireRead key m1
+-- ... • In a stmt of a 'do' block: (g1, key) <- RWLock.acquireRead key m1
 -- ...
 unit_read_mutex :: IO ()
 unit_read_mutex = do
