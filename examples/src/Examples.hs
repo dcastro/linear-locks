@@ -64,7 +64,8 @@ example3 = do
 -- This should throw an exception.
 --
 -- >>> example4
--- *** Exception: NestedLocksScopeException
+-- *** Exception: Nested lock scopes are not allowed
+-- ...
 example4 :: IO ()
 example4 = do
   m1 <- Mutex.new 0 "hello"

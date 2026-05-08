@@ -13,7 +13,7 @@ packages:
     hackage: tasty-hunit-compat-0.2.0.1
 snapshots:
 - completed:
-    sha256: 655e468f774beee1badf07dc4c45fb50288d5c66ce7bef6f487b7f92891a90b0
-    size: 728965
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/24/37.yaml
-  original: lts-24.37
+    sha256: 41683c1835db76754f62a1ab655ff0c0f13cf557f86a5f6c9fb002db9f430b48
+    size: 746658
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2026/5/6.yaml
+  original: nightly-2026-05-06
