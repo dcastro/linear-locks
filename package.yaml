@@ -13,6 +13,7 @@ tested-with: GHC == 9.10.3
 
 extra-source-files:
   - README.md
+extra-doc-files:
   - CHANGELOG.md
 
 synopsis: Locking primitives free of deadlocks.
@@ -50,7 +51,7 @@ library:
   dependencies:
     # We're using `RequiredTypeArguments` which was introduced in GHC 9.10.1, which comes with base 4.20.0.
     # https://wiki.haskell.org/Base_package
-    - base >= 4.20
+    - base >= 4.20 && < 5
     - linear-base >= 0.4.0
     - stm-containers >= 1.2.1
     - focus >= 1.0.3.2

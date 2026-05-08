@@ -6,7 +6,8 @@ checks:
     just doctest
     just test
     just haddock
-    xrefcheck
+    # check markdown links
+    xrefcheck --ignore "release/**/*"
     # Build with `-Werror`
     stack clean && stack build --fast --test --bench --no-run-tests --no-run-benchmarks --ghc-options "-Werror"
     # Build with the lowest supported version of each dependency.
@@ -52,3 +53,20 @@ haddock-hackage *ARGS:
 
 pandoc:
     ./scripts/run_pandoc.sh
+
+############################################################################
+## Release
+############################################################################
+
+release:
+    just checks
+    stack purge
+
+    rm -rf release && mkdir release
+    stack sdist . --tar-dir release
+
+upload-docs:
+    mkdir -p release
+    cabal update
+    cabal haddock lib:linear-locks --haddock-for-hackage --builddir release
+    cabal upload --documentation release/*-docs.tar.gz

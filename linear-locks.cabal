@@ -22,6 +22,7 @@ tested-with:
     GHC == 9.10.3 , GHC == 9.12.4 , GHC == 9.14.1
 extra-source-files:
     README.md
+extra-doc-files:
     CHANGELOG.md
 
 source-repository head
@@ -54,7 +55,7 @@ library
   ghc-options: -Weverything -Wno-name-shadowing -Wno-missing-exported-signatures -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missed-specialisations -Wno-all-missed-specialisations -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-implicit-prelude -Wno-prepositive-qualified-module -Wno-missing-safe-haskell-mode -Wno-missing-kind-signatures -Wno-missing-role-annotations
   build-depends:
       atomic-primops >=0.8.4
-    , base >=4.20
+    , base >=4.20 && <5
     , concurrent-extra >=0.7.0.12
     , containers >=0.6.8
     , deepseq >=1.5.0.0
