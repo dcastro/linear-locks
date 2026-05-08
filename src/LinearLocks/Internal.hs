@@ -17,6 +17,7 @@
 module LinearLocks.Internal where
 
 import Control.Concurrent (ThreadId, myThreadId)
+import Control.DeepSeq (NFData, force)
 import Control.Exception (Exception (..), bracket_, throw)
 import Control.Functor.Linear qualified as L
 import Control.Monad.IO.Class.Linear qualified as L
@@ -195,3 +196,13 @@ release' (RIOInternal.UnsafeResource key _) release = RIOInternal.RIO (\st -> L.
       Ur (RIOInternal.ReleaseMap releaseMap) <- L.readIORef rrm
       () <- release
       L.writeIORef rrm (RIOInternal.ReleaseMap (IntMap.delete key releaseMap))
+
+-- | A wrapper type to force the contents to be fully evaluated before being put back into an MVar / IORef.
+--
+-- NOTE: `NF` will only turn "shallow evaluation" into "deep evaluation".
+-- You must still use a bang pattern on `NF` to force it.
+newtype NF a = UnsafeNF {unNF :: a}
+  deriving newtype (Show, Eq)
+
+mkNF :: (NFData a) => a -> NF a
+mkNF = UnsafeNF . force

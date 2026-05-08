@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE RequiredTypeArguments #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NoFieldSelectors #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_HADDOCK not-home #-}
@@ -10,6 +11,7 @@
 module LinearLocks.Internal.StrictRWLock where
 
 import Control.Concurrent.ReadWriteLock qualified as Conc
+import Control.DeepSeq (NFData)
 import Control.Functor.Linear qualified as L
 import Control.Monad.IO.Class.Linear qualified as L
 import Data.IORef (IORef)
@@ -24,13 +26,13 @@ import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear qualified as RIO
 
 -- $setup
--- >>> data Config = Config { verbose :: Bool }
+-- >>> newtype Config = Config { verbose :: Bool } deriving newtype NFData
 
 {- ORMOLU_DISABLE -}
-{- | A deadlock-free lock that allows multiple concurrent readers or a single writer.
+{- | A strict version of "LinearLocks.RWLock".
 
 >>> import LinearLocks
->>> import LinearLocks.RWLock qualified as RWLock
+>>> import LinearLocks.RWLock.Strict qualified as RWLock
 >>> import Prelude.Linear (Ur (..))
 >>> import Control.Functor.Linear qualified as Linear
 
@@ -55,7 +57,7 @@ example = do
 -}
 {- ORMOLU_ENABLE -}
 data RWLock (lvl :: Nat) a = RWLock
-  { var :: IORef a,
+  { var :: IORef (NF a),
     -- | A read-write lock gating access to the `IORef`.
     lock :: Conc.RWLock,
     -- | The unique ID for this lock. It's used to ensure t'LinearLocks.LockSet's don't contain duplicate locks, see 'LinearLocks.newLockSet'.
@@ -68,8 +70,10 @@ data RWLock (lvl :: Nat) a = RWLock
 --
 -- It does not have to be unique, multiple locks can have the same level.
 -- Locks with the same level can be added to a t`LinearLocks.LockSet` and acquired with 'LinearLocks.acquireMany'.
-new :: forall a. forall (lvl :: Nat) -> a -> IO (RWLock lvl a)
-new _lvl a = do
+--
+-- This function fully evaluates the initial value to Normal Form.
+new :: forall a. (NFData a) => forall (lvl :: Nat) -> a -> IO (RWLock lvl a)
+new _lvl (mkNF -> !a) = do
   lock <- Conc.new
   var <- IORef.newIORef a
   id <- nextLockId
@@ -122,7 +126,7 @@ instance Acquirable (AsRead lvl a) where
     L.pure
       ReadGuard
         { resource = resource,
-          readValue = Ur readValue
+          readValue = Ur readValue.unNF
         }
     where
       acq :: L.IO (Ur Resource)
@@ -157,6 +161,7 @@ instance Readable (ReadGuard a) where
 acquireWrite ::
   forall a keyLvl lockLvl.
   (keyLvl <= lockLvl) =>
+  (NFData a) =>
   LockKey keyLvl %1 ->
   RWLock lockLvl a ->
   RIO (WriteGuard a, LockKey (lockLvl + 1))
@@ -170,13 +175,13 @@ data WriteGuard a = WriteGuard
     -- | The latest value set by the user.
     -- This will be comitted when the guard is released.
     newValue :: Ur a,
-    var :: Ur (IORef a)
+    var :: Ur (IORef (NF a))
   }
 
 -- | Newtype used to add t'RWLock's to t'LinearLocks.LockSet's.
 newtype AsWrite lvl a = AsWrite (RWLock lvl a)
 
-instance Acquirable (AsWrite lvl a) where
+instance (NFData a) => Acquirable (AsWrite lvl a) where
   type Guard (AsWrite lvl a) = WriteGuard a
   type Level (AsWrite lvl a) = lvl
 
@@ -190,7 +195,7 @@ instance Acquirable (AsWrite lvl a) where
     L.pure
       WriteGuard
         { resource = resource,
-          newValue = Ur initialValue,
+          newValue = Ur initialValue.unNF,
           var = Ur m.var
         }
     where
@@ -204,12 +209,14 @@ instance Acquirable (AsWrite lvl a) where
         L.fromSystemIO L.$ Conc.releaseWrite lock
 
 -- | Releases the lock and commits the latest value set by `write`.
-releaseWrite :: WriteGuard a %1 -> RIO ()
-releaseWrite (WriteGuard resource (Ur newValue) (Ur var)) = L.do
+--
+-- Fully evaluates the value to Normal Form before releasing the lock.
+releaseWrite :: (NFData a) => WriteGuard a %1 -> RIO ()
+releaseWrite (WriteGuard resource (Ur (mkNF -> !newValue)) (Ur var)) = L.do
   L.liftSystemIO $ IORef.writeIORef var newValue
   RIO.release resource
 
-instance Releasable (WriteGuard a) where
+instance (NFData a) => Releasable (WriteGuard a) where
   doRelease = releaseWrite
 
 instance Readable (WriteGuard a) where
@@ -223,6 +230,8 @@ instance Readable (WriteGuard a) where
 --
 -- If an exception is thrown after `write` but before `releaseWrite`,
 -- the t'RWLock' will be rolled back to its original state.
+--
+-- Note: The value will only be evaluated to Normal Form when the mutex is released, not when it's written.
 write :: WriteGuard a %1 -> a -> RIO (WriteGuard a)
 write (WriteGuard resource (Ur _) var) newValue =
   L.pure (WriteGuard {resource, newValue = Ur newValue, var})

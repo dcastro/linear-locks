@@ -11,6 +11,7 @@ import Control.Exception (SomeException, throwIO, try)
 import Control.Functor.Linear qualified as L
 import Control.Monad.IO.Class.Linear qualified as L
 import LinearLocks
+import LinearLocks.Internal qualified as Internal
 import LinearLocks.Internal.StrictMutex qualified as Internal
 import LinearLocks.Mutex.Strict qualified as Mutex
 import Prelude.Linear (Ur (..))
