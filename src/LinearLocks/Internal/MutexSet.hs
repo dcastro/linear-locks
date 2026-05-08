@@ -38,14 +38,14 @@ deriving via (VU.UnboxViaPrim Int) instance VG.Vector VU.Vector MutexSetIndex
 
 instance VU.Unbox MutexSetIndex
 
--- | A set of mutexes with the same level that can be locked together with 'acquireMany'.
+-- | A set of mutexes with the same level that can be acquired together with 'acquireMany'.
 data MutexSet set where
   MkMutexSet :: set -> VU.Vector MutexSetIndex -> MutexSet set
 
 -- | Creates a 'MutexSet' from a set of mutexes.
 -- All mutexes must have the same level.
 --
--- Mutexes in a 'MutexSet' can be locked simultaneously using 'acquireMany'.
+-- Mutexes in a 'MutexSet' can be acquired simultaneously using 'acquireMany'.
 --
 -- Fails if the set contains duplicate mutexes.
 --
