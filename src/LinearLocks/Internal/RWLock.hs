@@ -23,21 +23,51 @@ import System.IO.Linear qualified as L
 import System.IO.Resource.Linear (RIO)
 import System.IO.Resource.Linear qualified as RIO
 
--- | A deadlock-free lock that allows multiple concurrent readers or a single writer.
+-- $setup
+-- >>> data Config = Config { verbose :: Bool }
+
+{- ORMOLU_DISABLE -}
+{- | A deadlock-free lock that allows multiple concurrent readers or a single writer.
+
+>>> import LinearLocks
+>>> import LinearLocks.RWLock qualified as RWLock
+>>> import Prelude.Linear (Ur (..))
+>>> import Control.Functor.Linear qualified as Linear
+
+>>> :{
+example :: IO ()
+example = do
+  configLock <- RWLock.new 0 Config { verbose = True }
+  --
+  -- Enter a lockscope
+  lockScope \key -> Linear.do
+    -- Acquire the lock in "write mode"
+    (guard, key) <- lock key (RWLock.AsWrite configLock)
+    --
+    -- Read/write
+    (Ur config, guard) <- RWLock.read guard
+    guard <- RWLock.write guard config { verbose = False }
+    --
+    -- Release lock
+    RWLock.releaseWrite guard
+    Linear.pure (Ur (), key)
+:}
+-}
+{- ORMOLU_ENABLE -}
 data RWLock (lvl :: Nat) a = RWLock
   { var :: IORef a,
     -- | A read-write lock gating access to the `IORef`.
     lock :: Conc.RWLock,
-    -- | The unique ID for this lock. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate mutexes, see 'LinearLocks.newMutexSet'.
+    -- | The unique ID for this lock. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate locks, see 'LinearLocks.newMutexSet'.
     id :: MutexId
   }
 
 -- | Creates a new read-write lock with the given initial value.
 --
--- The @lvl@ parameter determines the order in which this mutex can be acquired relative to other mutexes.
+-- The @lvl@ parameter determines the order in which this lock can be acquired relative to other locks.
 --
--- It does not have to be unique, multiple mutexes can have the same level.
--- Mutexes with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
+-- It does not have to be unique, multiple locks can have the same level.
+-- Locks with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.lockMany'.
 new :: forall a. forall (lvl :: Nat) -> a -> IO (RWLock lvl a)
 new _lvl a = do
   lock <- Conc.new
