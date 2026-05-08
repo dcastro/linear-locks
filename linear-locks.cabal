@@ -50,16 +50,16 @@ library
       TypeFamilies
   ghc-options: -Weverything -Wno-name-shadowing -Wno-missing-exported-signatures -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missed-specialisations -Wno-all-missed-specialisations -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-implicit-prelude -Wno-prepositive-qualified-module -Wno-missing-safe-haskell-mode -Wno-missing-kind-signatures -Wno-missing-role-annotations
   build-depends:
-      atomic-primops
-    , base
-    , concurrent-extra
-    , containers
-    , deepseq
-    , focus
-    , linear-base
-    , stm-containers
-    , vector
-    , vector-algorithms
+      atomic-primops >=0.8.4
+    , base >=4.20
+    , concurrent-extra >=0.7.0.12
+    , containers >=0.6.8
+    , deepseq >=1.5.0.0
+    , focus >=1.0.3.2
+    , linear-base >=0.4.0
+    , stm-containers >=1.2.1
+    , vector >=0.13.1.0
+    , vector-algorithms >=0.9.0.1
   default-language: GHC2024
 
 test-suite linear-locks-test

@@ -50,16 +50,16 @@ ghc-options:
 library:
   source-dirs: src
   dependencies:
-    - base
-    - linear-base
-    - stm-containers
-    - focus
-    - atomic-primops
-    - vector
-    - vector-algorithms
-    - containers
-    - deepseq
-    - concurrent-extra
+    - base >= 4.20
+    - linear-base >= 0.4.0
+    - stm-containers >= 1.2.1
+    - focus >= 1.0.3.2
+    - atomic-primops >= 0.8.4
+    - vector >= 0.13.1.0
+    - vector-algorithms >= 0.9.0.1
+    - containers >= 0.6.8
+    - deepseq >= 1.5.0.0
+    - concurrent-extra >= 0.7.0.12
 
 tests:
   linear-locks-test:

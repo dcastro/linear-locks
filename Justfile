@@ -9,6 +9,23 @@ checks:
     xrefcheck
     # Build with `-Werror`
     stack clean && stack build --fast --test --bench --no-run-tests --no-run-benchmarks --ghc-options "-Werror"
+    # Build with the lowest supported version of each dependency.
+    cabal clean && just min-deps
+
+# Build the project with the lowest supported version of each dependency.
+min-deps:
+    cabal build all \
+        --constraint='linear-base ==0.4.0' \
+        --constraint='stm-containers ==1.2.1' \
+        --constraint='focus ==1.0.3.2' \
+        --constraint='atomic-primops ==0.8.4' \
+        --constraint='vector ==0.13.1.0' \
+        --constraint='vector-algorithms ==0.9.0.1' \
+        --constraint='containers ==0.6.8' \
+        --constraint='deepseq ==1.5.0.0' \
+        --constraint='concurrent-extra ==0.7.0.12' \
+        --ghc-options="-Werror" \
+        --with-compiler=ghc-9.10.3
 
 # To run with a file watcher: just test --file-watch
 test *ARGS:
