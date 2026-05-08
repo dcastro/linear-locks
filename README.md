@@ -16,14 +16,14 @@ to not lead to deadlocks.
 
 It achieves this by breaking one of the [Coffman conditions for
 deadlocks](https://en.wikipedia.org/wiki/Deadlock_(computer_science)#Prevention):
-the “circular wait” condition. `linear-locks` ensures locks are always
+the "circular wait" condition. `linear-locks` ensures locks are always
 acquired in a consistent order.
 
 Currently supported lock types:
 
-- “LinearLocks.Mutex”
-- “LinearLocks.Mutex.Strict”
-- “LinearLocks.RWLock”
+- "LinearLocks.Mutex"
+- "LinearLocks.Mutex.Strict"
+- "LinearLocks.RWLock"
 
 ## Motivation
 
@@ -52,7 +52,7 @@ guaranteed to be free of deadlocks.
 [`linear-base`](https://hackage.haskell.org/package/linear-base)
 package.
 
-We’ll need `QualifiedDo`:
+We'll need `QualifiedDo`:
 
 ``` haskell
 {-# LANGUAGE GHC2024 #-}
@@ -72,7 +72,7 @@ import Control.Functor.Linear qualified as Linear
 import Control.Monad.IO.Class.Linear qualified as Linear
 ```
 
-Each lock is assigned a “level” at compile-time.
+Each lock is assigned a "level" at compile-time.
 
 ``` haskell
   -- `Mutex 0 Config`
@@ -82,13 +82,13 @@ Each lock is assigned a “level” at compile-time.
   dbMutex <- Mutex.new 1 DbConn {}
 ```
 
-We can then enter a “lock scope”.
+We can then enter a "lock scope".
 
-We’re given a `LockKey lvl` that we can use to acquire locks. The key
+We're given a `LockKey lvl` that we can use to acquire locks. The key
 starts off with level 0 (`LockKey 0`) and it can be used to acquire any
 lock with level 0 or above.
 
-Every time we acquire a lock, the key’s level increases. Acquiring
+Every time we acquire a lock, the key's level increases. Acquiring
 `Mutex 0 Config` consumes our `LockKey 0` and gives us a `LockKey 1`
 back. Acquiring `Mutex 1 DbConn` then gives us a `LockKey 2`.
 
@@ -108,7 +108,7 @@ back. Acquiring `Mutex 1 DbConn` then gives us a `LockKey 2`.
     Linear.pure (Ur (), key)
 ```
 
-Acquiring locks in the wrong order (e.g. trying to acquire a lock of
+Acquiring locks in the wrong order (e.g. trying to acquire a lock of
 level 0 with a key of level 2) would be a type error. This ensures locks
 are always acquired in order of increasing level, preventing circular
 waits and thus deadlocks.
@@ -155,7 +155,7 @@ Since the guard is linear, `read` and `write` must consume the guard and
 return a new one.
 
 `read configGuard` returns a `Ur Config`. `Ur` is short for
-“unrestricted”, meaning the value is *not* linear and can be freely used
+"unrestricted", meaning the value is *not* linear and can be freely used
 as many times as needed.
 
 <h3>
@@ -223,4 +223,4 @@ instance itself.
 
 ## Roadmap
 
-- [ ] Allow backtracking of `LockKey`’s level when a lock is released
+- [ ] Allow backtracking of `LockKey`'s level when a lock is released
