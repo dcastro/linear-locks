@@ -52,16 +52,16 @@ module LinearLocks
     acquire,
     Acquirable (), -- Note: do not export the typeclass members
 
-    -- * Mutex sets
-    MutexSet,
-    IsMutexSet (), -- Note: do not export the typeclass members
-    newMutexSet,
+    -- * Lock sets
+    LockSet,
+    IsLockSet (), -- Note: do not export the typeclass members
+    newLockSet,
     acquireMany,
   )
 where
 
 import LinearLocks.Internal
-import LinearLocks.Internal.MutexSet
+import LinearLocks.Internal.LockSet
 
 -- $setup
 -- >>> data Config = Config { verbose :: Bool }

@@ -154,17 +154,17 @@ as many times as needed.
 
 <h3>
 
-MutexSet
+LockSet
 </h3>
 
 Mutexes with the same level must be acquired simultaneously by adding
-them to a `MutexSet` and using `acquireMany`.
+them to a `LockSet` and using `acquireMany`.
 
 ``` haskell
   alice <- Mutex.new 3 User { balance = 100 }
   bob <- Mutex.new 3 User { balance = 100 }
 
-  users <- newMutexSet (alice, bob)
+  users <- newLockSet (alice, bob)
 
   lockScope \key -> Linear.do
     ((aliceGuard, bobGuard), key) <- acquireMany key users

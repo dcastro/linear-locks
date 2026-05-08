@@ -82,7 +82,7 @@ example4 = do
 
     Linear.pure (Ur (), key)
 
--- | Lock many locks with the same lvl using a `MutexSet`
+-- | Lock many locks with the same lvl using a `LockSet`
 --
 -- >>> example5
 -- hello world
@@ -92,7 +92,7 @@ example5 :: IO ()
 example5 = do
   m1 <- Mutex.new 0 3
   m2 <- Mutex.new 0 "hello world"
-  mutexSet <- newMutexSet (m1, m2)
+  mutexSet <- newLockSet (m1, m2)
   lockScope \key -> Linear.do
     ((mg1, mg2), key) <- acquireMany key mutexSet
     (Ur count, mg1) <- Mutex.read mg1

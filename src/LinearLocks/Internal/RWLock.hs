@@ -58,7 +58,7 @@ data RWLock (lvl :: Nat) a = RWLock
   { var :: IORef a,
     -- | A read-write lock gating access to the `IORef`.
     lock :: Conc.RWLock,
-    -- | The unique ID for this lock. It's used to ensure t'LinearLocks.MutexSet's don't contain duplicate locks, see 'LinearLocks.newMutexSet'.
+    -- | The unique ID for this lock. It's used to ensure t'LinearLocks.LockSet's don't contain duplicate locks, see 'LinearLocks.newLockSet'.
     id :: LockId
   }
 
@@ -67,7 +67,7 @@ data RWLock (lvl :: Nat) a = RWLock
 -- The @lvl@ parameter determines the order in which this lock can be acquired relative to other locks.
 --
 -- It does not have to be unique, multiple locks can have the same level.
--- Locks with the same level can be added to a t`LinearLocks.MutexSet` and acquired with 'LinearLocks.acquireMany'.
+-- Locks with the same level can be added to a t`LinearLocks.LockSet` and acquired with 'LinearLocks.acquireMany'.
 new :: forall a. forall (lvl :: Nat) -> a -> IO (RWLock lvl a)
 new _lvl a = do
   lock <- Conc.new

@@ -29,8 +29,8 @@ library
   exposed-modules:
       LinearLocks
       LinearLocks.Internal
+      LinearLocks.Internal.LockSet
       LinearLocks.Internal.Mutex
-      LinearLocks.Internal.MutexSet
       LinearLocks.Internal.RWLock
       LinearLocks.Internal.StrictMutex
       LinearLocks.Mutex
@@ -64,7 +64,7 @@ test-suite linear-locks-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Test.LinearLocks.MutexSetSpec
+      Test.LinearLocks.LockSetSpec
       Test.LinearLocks.MutexSpec
       Test.LinearLocks.RWLockSpec
       Test.LinearLocks.StrictMutexSpec
