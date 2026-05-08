@@ -70,6 +70,7 @@ test-suite linear-locks-test
       Test.LinearLocks.MutexSpec
       Test.LinearLocks.RWLockSpec
       Test.LinearLocks.StrictMutexSpec
+      Test.LinearLocks.StrictRWLockSpec
       Paths_linear_locks
   autogen-modules:
       Paths_linear_locks
