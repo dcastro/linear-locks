@@ -94,13 +94,13 @@ Acquiring `Mutex 1 DbConn` then gives us a `LockKey 2`.
 
 \begin{code}
   lockScope \key -> Linear.do
-    --                             ↓ Consumes `LockKey 0` to acquire a `Mutex 0`
-    (configGuard, key) <- acquire key configMutex
+    --                                   ↓ Consumes `LockKey 0` to acquire a `Mutex 0`
+    (configGuard, key) <- Mutex.acquire key configMutex
     --             ↑ Returns `LockKey 1`
 
 
-    --                         ↓ Consumes `LockKey 1` to acquire a `Mutex 1`
-    (dbGuard, key) <- acquire key dbMutex
+    --                               ↓ Consumes `LockKey 1` to acquire a `Mutex 1`
+    (dbGuard, key) <- Mutex.acquire key dbMutex
     --         ↑ Returns `LockKey 2`
 
     Mutex.release configGuard
@@ -130,7 +130,7 @@ The guard is also linearly typed, thus ensuring:
 
 \begin{code}
   lockScope \key -> Linear.do
-    (configGuard, key) <- acquire key configMutex
+    (configGuard, key) <- Mutex.acquire key configMutex
 
     (Ur config, configGuard) <- Mutex.read configGuard
 
@@ -179,7 +179,7 @@ You can use the linear [`MonadIO` from `linear-base`][MonadIO] to lift `IO` acti
 
 \begin{code}
   lockScope \key -> Linear.do
-    (configGuard, key) <- acquire key configMutex
+    (configGuard, key) <- Mutex.acquire key configMutex
     (Ur config, configGuard) <- Mutex.read configGuard
 
     Ur newVerbose <- Linear.liftSystemIOU do

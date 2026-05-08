@@ -2,6 +2,8 @@ module LinearLocks.RWLock
   ( -- * RWLock
     RWLock,
     new,
+    acquireRead,
+    acquireWrite,
 
     -- * Read mode
     AsRead (..),

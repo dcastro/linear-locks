@@ -49,8 +49,6 @@ module LinearLocks
     lockScope,
     LockKey,
     NestedLocksScopeException (..),
-    acquire,
-    Acquirable (), -- Note: do not export the typeclass members
 
     -- * Lock sets
     LockSet,

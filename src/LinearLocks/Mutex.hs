@@ -2,6 +2,7 @@ module LinearLocks.Mutex
   ( -- * Mutex
     Mutex,
     new,
+    acquire,
 
     -- * Mutex guards
     MutexGuard,
@@ -11,4 +12,5 @@ module LinearLocks.Mutex
   )
 where
 
+import LinearLocks.Internal (acquire)
 import LinearLocks.Internal.Mutex as Mutex

@@ -15,7 +15,7 @@ import Control.Monad.IO.Class.Linear qualified as L
 import Data.IORef (IORef)
 import Data.IORef qualified as IORef
 import Data.Kind (Type)
-import GHC.TypeLits (Nat)
+import GHC.TypeLits (Nat, type (+), type (<=))
 import LinearLocks.Internal
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
@@ -83,6 +83,14 @@ class Readable guard where
 -- Read mode
 ----------------------------------------------------------------------------
 
+acquireRead ::
+  forall a keyLvl lockLvl.
+  (keyLvl <= lockLvl) =>
+  LockKey keyLvl %1 ->
+  RWLock lockLvl a ->
+  RIO (ReadGuard a, LockKey (lockLvl + 1))
+acquireRead key m = acquire key (AsRead m)
+
 -- | A t`ReadGuard` represents the ownership of a RWLock in read mode.
 --
 -- It must be released with `releaseRead`, after which the guard will be consumed and can no longer be used.
@@ -142,6 +150,14 @@ instance Readable (ReadGuard a) where
 ----------------------------------------------------------------------------
 -- Write mode
 ----------------------------------------------------------------------------
+
+acquireWrite ::
+  forall a keyLvl lockLvl.
+  (keyLvl <= lockLvl) =>
+  LockKey keyLvl %1 ->
+  RWLock lockLvl a ->
+  RIO (WriteGuard a, LockKey (lockLvl + 1))
+acquireWrite key m = acquire key (AsWrite m)
 
 -- | A t`WriteGuard` represents the ownership of a RWLock in write mode.
 --

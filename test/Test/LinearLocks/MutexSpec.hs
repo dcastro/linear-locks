@@ -33,21 +33,21 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>>   m1 <- Mutex.new 2 "hello"
 -- >>>   m2 <- Mutex.new 4 "world"
 -- >>>   lockScope \key -> L.do
--- >>>     (mg2, key) <- acquire key m2
--- >>>     (mg1, key) <- acquire key m1
+-- >>>     (mg2, key) <- Mutex.acquire key m2
+-- >>>     (mg1, key) <- Mutex.acquire key m1
 -- >>>     Mutex.release mg1
 -- >>>     Mutex.release mg2
 -- >>>     L.pure (Ur (), key)
 -- >>> :}
 -- ...
 -- ... • Cannot satisfy: 5 <= 2
--- ... • In a stmt of a 'do' block: (mg1, key) <- acquire key m1
+-- ... • In a stmt of a 'do' block: (mg1, key) <- Mutex.acquire key m1
 -- ...
 unit_read_mutex :: IO ()
 unit_read_mutex = do
   mutex <- Mutex.new 0 "hello"
   str <- lockScope \key -> L.do
-    (mg, key) <- acquire key mutex
+    (mg, key) <- Mutex.acquire key mutex
     (Ur str, mg) <- Mutex.read mg
     Mutex.release mg
     L.pure (Ur str, key)
@@ -57,13 +57,13 @@ unit_write_mutex :: IO ()
 unit_write_mutex = do
   mutex <- Mutex.new 0 "hello"
   lockScope \key -> L.do
-    (mg, key) <- acquire key mutex
+    (mg, key) <- Mutex.acquire key mutex
     mg <- Mutex.write mg "world"
     Mutex.release mg
     L.pure (Ur (), key)
 
   str <- lockScope \key -> L.do
-    (mg, key) <- acquire key mutex
+    (mg, key) <- Mutex.acquire key mutex
     (Ur str, mg) <- Mutex.read mg
     Mutex.release mg
     L.pure (Ur str, key)
@@ -77,7 +77,7 @@ unit_realeases_mvar :: IO ()
 unit_realeases_mvar = do
   mutex <- Mutex.new 0 "hello"
   lockScope \key -> L.do
-    (mg, key) <- acquire key mutex
+    (mg, key) <- Mutex.acquire key mutex
 
     L.liftSystemIO do
       isEmpty <- MVar.isEmptyMVar mutex.var
@@ -151,7 +151,7 @@ unit_rolls_back_on_exception :: IO ()
 unit_rolls_back_on_exception = do
   mutex <- Mutex.new 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- acquire key mutex
+    (mg, key) <- Mutex.acquire key mutex
     mg <- Mutex.write mg "world"
     L.liftSystemIO L.$ throwIO (userError "oops")
     Mutex.release mg
@@ -165,7 +165,7 @@ unit_rolls_back_on_imprecise_exception :: IO ()
 unit_rolls_back_on_imprecise_exception = do
   mutex <- Mutex.new 0 "hello"
   Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- acquire key mutex
+    (mg, key) <- Mutex.acquire key mutex
     mg <- Mutex.write mg "world"
     error "err"
     Mutex.release mg
@@ -185,7 +185,7 @@ unit_release_doesnt_evaluate_value_to_normal_form = do
   mutex <- Mutex.new @[Int] 0 [1]
 
   lockScope \key -> L.do
-    (mg, key) <- acquire key mutex
+    (mg, key) <- Mutex.acquire key mutex
     -- This should not throw, the "error" thunk should not be evaluated
     mg <- Mutex.write mg [1, 2, error "oops", 4]
     -- This should not throw
