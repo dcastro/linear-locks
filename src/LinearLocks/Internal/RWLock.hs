@@ -83,7 +83,7 @@ class Readable guard where
 -- Read mode
 ----------------------------------------------------------------------------
 
--- Acquires the t'RWLock' in "read mode". Consumes the key and return a new key (with an increased level).
+-- | Acquires the t'RWLock' in "read mode". Consumes the key and return a new key (with an increased level).
 acquireRead ::
   forall a keyLvl lockLvl.
   (keyLvl <= lockLvl) =>
@@ -153,7 +153,7 @@ instance Readable (ReadGuard a) where
 -- Write mode
 ----------------------------------------------------------------------------
 
--- Acquires the t'RWLock' in "write mode". Consumes the key and return a new key (with an increased level).
+-- | Acquires the t'RWLock' in "write mode". Consumes the key and return a new key (with an increased level).
 acquireWrite ::
   forall a keyLvl lockLvl.
   (keyLvl <= lockLvl) =>
