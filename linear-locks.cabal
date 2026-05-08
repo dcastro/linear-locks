@@ -17,6 +17,8 @@ copyright:      2026 Diogo Castro
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
+tested-with:
+    GHC == 9.10.3 , GHC == 9.12.4 , GHC == 9.14.1
 extra-source-files:
     README.md
     CHANGELOG.md
