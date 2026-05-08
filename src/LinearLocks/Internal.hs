@@ -43,7 +43,7 @@ import System.IO.Resource.Linear.Internal qualified as RIOInternal
 -- | A key used to acquire locks.
 -- A key of level @n@ can only acquire locks of level @n@ or higher.
 --
--- Acquiring a mutex with `acquire` or `LinearLocks.acquireMany` will consume the key and return a new key with an increased level,
+-- Acquiring a lock with `acquire` or `LinearLocks.acquireMany` will consume the key and return a new key with an increased level,
 -- ensuring locks are always acquired in a consistent order.
 data LockKey (lvl :: Nat)
   = -- Notes:
@@ -51,7 +51,7 @@ data LockKey (lvl :: Nat)
     --  * Do not implement `Consumable` / `Dupable` / `Movable`
     UnsafeLockKey
 
--- | A unique identifier for a mutex.
+-- | A unique identifier for a lock.
 newtype LockId = LockId Int
   deriving newtype (Eq, Ord, Show)
 
@@ -147,8 +147,8 @@ class (Releasable (Guard acquirable)) => Acquirable acquirable where
   unsafeAcquire :: acquirable -> RIO (Guard acquirable)
 
 class Releasable guard where
-  -- Design decision: `doRelease` generalizes over releasing any kind of mutex, but we don't export it.
-  -- We only export the monomorphic `release` functions for each mutex type, because they might have
+  -- Design decision: `doRelease` generalizes over releasing any kind of guard, but we don't export it.
+  -- We only export the monomorphic `release` functions for each guard type, because they might have
   -- important notes in their haddock docs (e.g. `StrictMutex.release` does deep evaluation and might throw an exception as a result),
   -- so it's important those docs are easily discoverable and not hidden behind a more general `doRelease` function.
   doRelease :: guard %1 -> RIO ()
@@ -171,7 +171,7 @@ lockIdCounter :: AtomicCounter
 lockIdCounter =
   unsafePerformIO $ Atomic.newCounter 0
 
--- | Generates the next unique mutex ID.
+-- | Generates the next unique lock ID.
 nextLockId :: IO LockId
 nextLockId = do
   newId <- Atomic.incrCounter 1 lockIdCounter
