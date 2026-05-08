@@ -82,7 +82,7 @@ example4 = do
 
     Linear.pure (Ur (), key)
 
--- | Lock many locks with the same lvl using a `LockSet`
+-- | Acquire many locks with the same lvl using a `LockSet`
 --
 -- >>> example5
 -- hello world
