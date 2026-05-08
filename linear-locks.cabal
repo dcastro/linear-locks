@@ -37,6 +37,7 @@ library
       LinearLocks.Mutex
       LinearLocks.Mutex.Strict
       LinearLocks.RWLock
+      LinearLocks.RWLock.Strict
   other-modules:
       Paths_linear_locks
   autogen-modules:
