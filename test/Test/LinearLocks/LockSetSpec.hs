@@ -14,6 +14,7 @@ import LinearLocks.Internal.LockSet qualified as Internal
 import LinearLocks.Internal.Mutex qualified as Internal
 import LinearLocks.Mutex qualified as Mutex
 import LinearLocks.Mutex.Strict qualified as StrictMutex
+import LinearLocks.RWLock qualified as RWLock
 import Prelude.Linear (Ur (..))
 import Test.Hspec.Expectations.Pretty (shouldNotBe, shouldThrow)
 import "tasty-hunit-compat" Test.Tasty.HUnit
@@ -129,18 +130,22 @@ unit_sets_can_have_mixed_lock_types :: IO ()
 unit_sets_can_have_mixed_lock_types = do
   m1 <- StrictMutex.new 0 "hello"
   m2 <- Mutex.new @Int 0 99
-  set <- newLockSet (m1, m2)
+  m3 <- RWLock.new 0 True
+  set <- newLockSet (m1, m2, RWLock.AsRead (m3))
 
   lockScope \key -> L.do
-    ((mg1, mg2), key) <- acquireMany key set
+    ((mg1, mg2, mg3), key) <- acquireMany key set
 
     (Ur res1, mg1) <- StrictMutex.read mg1
     (Ur res2, mg2) <- Mutex.read mg2
+    (Ur res3, mg3) <- RWLock.read mg3
 
     L.liftSystemIO do
       res1 @?= "hello"
       res2 @?= 99
+      res3 @?= True
 
     StrictMutex.release mg1
     Mutex.release mg2
+    RWLock.releaseRead mg3
     L.pure (Ur (), key)
