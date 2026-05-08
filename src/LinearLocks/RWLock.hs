@@ -4,11 +4,13 @@ module LinearLocks.RWLock
     new,
 
     -- * Read mode
+    AsRead (..),
     ReadGuard,
     RWLock.read,
     releaseRead,
 
     -- * Write mode
+    AsWrite (..),
     WriteGuard,
     write,
     releaseWrite,

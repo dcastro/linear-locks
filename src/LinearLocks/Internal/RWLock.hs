@@ -134,7 +134,7 @@ instance Lockable (AsWrite lvl a) where
 
   unsafeLock :: forall lvl a. AsWrite lvl a -> RIO (WriteGuard a)
   unsafeLock (AsWrite m) = L.do
-    -- Acquire the rwlock in "read mode" and *then* read the `IORef`.
+    -- Acquire the rwlock in "write mode" and *then* read the `IORef`.
     resource <- RIO.unsafeAcquire acq rel
     Ur initialValue <- L.liftSystemIOU (IORef.readIORef m.var)
     L.pure
@@ -146,12 +146,12 @@ instance Lockable (AsWrite lvl a) where
     where
       acq :: L.IO (Ur Resource)
       acq = L.do
-        L.fromSystemIO L.$ Conc.acquireRead m.lock
+        L.fromSystemIO L.$ Conc.acquireWrite m.lock
         L.pure (Ur (Resource {lock = m.lock}))
 
       rel :: Resource -> L.IO ()
       rel (Resource lock) =
-        L.fromSystemIO L.$ Conc.releaseRead lock
+        L.fromSystemIO L.$ Conc.releaseWrite lock
 
 -- | Releases the lock and commits the latest value set by `write`.
 releaseWrite :: WriteGuard a %1 -> RIO ()
