@@ -3,7 +3,7 @@ linear-locks
 
 `linear-locks` is a port of the [Surelock] Rust crate to Linear Haskell.
 
-The package provides locking primitives that are statically guaranteed to not lead to deadlocks.
+The package provides locking primitives that are statically guaranteed not to lead to deadlocks.
 
 It achieves this by breaking one of the [Coffman conditions for deadlocks][Coffman]: the "circular wait" condition.
 `linear-locks` ensures locks are always acquired in a consistent order.
@@ -27,7 +27,7 @@ Still, `STM` does have its limitations:
 * Due to its optimistic nature, scenarios with high contention can lead to excessive transaction retries and livelocks.
 
 Locking primitives like `MVar`s solve both of these issues,
-but juggling multiple `MVar`s is a sure way to sooner or later hit a deadlock.
+but juggling multiple `MVar`s is a sure way to hit a deadlock sooner or later.
 
 Enter `linear-locks`: it provides locking primitives that are statically guaranteed to be free of deadlocks.
 
@@ -111,7 +111,7 @@ Acquiring `Mutex 1 DbConn` then gives us a `LockKey 2`.
 Acquiring locks in the wrong order (e.g. trying to acquire a lock of level 0 with a key of level 2) would be a type error.
 This ensures locks are always acquired in order of increasing level, preventing circular waits and thus deadlocks.
 
-The key is linearly typed, it must be consumed _exactly once_.
+The key is linearly typed; it must be consumed _exactly once_.
 Using the same key to acquire 2 locks would be a type error.
 
 Notice how we had to use `Linear.do` (enabled by the `QualifiedDo` extension) and `Linear.pure` instead of `Prelude.pure` to chain our actions together.

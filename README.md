@@ -12,7 +12,7 @@
 to Linear Haskell.
 
 The package provides locking primitives that are statically guaranteed
-to not lead to deadlocks.
+not to lead to deadlocks.
 
 It achieves this by breaking one of the [Coffman conditions for
 deadlocks](https://en.wikipedia.org/wiki/Deadlock_(computer_science)#Prevention):
@@ -41,7 +41,7 @@ Still, `STM` does have its limitations:
   to excessive transaction retries and livelocks.
 
 Locking primitives like `MVar`s solve both of these issues, but juggling
-multiple `MVar`s is a sure way to sooner or later hit a deadlock.
+multiple `MVar`s is a sure way to hit a deadlock sooner or later.
 
 Enter `linear-locks`: it provides locking primitives that are statically
 guaranteed to be free of deadlocks.
@@ -113,7 +113,7 @@ level 0 with a key of level 2) would be a type error. This ensures locks
 are always acquired in order of increasing level, preventing circular
 waits and thus deadlocks.
 
-The key is linearly typed, it must be consumed *exactly once*. Using the
+The key is linearly typed; it must be consumed *exactly once*. Using the
 same key to acquire 2 locks would be a type error.
 
 Notice how we had to use `Linear.do` (enabled by the `QualifiedDo`
