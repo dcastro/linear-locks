@@ -94,7 +94,7 @@ acquireMany ::
   MutexSet set ->
   RIO (MutexGuardSet set, MutexKey (mutexLvl + 1))
 acquireMany UnsafeMutexKey (MkMutexSet set indices) = L.do
-  guards <- lockInOrder indices set
+  guards <- acquireInOrder indices set
   L.pure (guards, UnsafeMutexKey)
 
 class IsMutexSet set where
@@ -103,12 +103,12 @@ class IsMutexSet set where
 
   collectIds :: set -> [MutexId]
 
-  -- | Locks the mutexes in the set in the given order.
-  -- E.g. `lockInOrder [1, 3, 2]` will lock the first mutex in the set, then the third, then the second.
+  -- | Acquires the locks in the set in the given order.
+  -- E.g. `acquireInOrder [1, 3, 2]` will acquire the first mutex in the set, then the third, then the second.
   --
   -- Invariants:
   --   * The indices must refer to every mutex in the set, without duplicates.
-  lockInOrder :: VU.Vector MutexSetIndex -> set -> RIO (MutexGuardSet set)
+  acquireInOrder :: VU.Vector MutexSetIndex -> set -> RIO (MutexGuardSet set)
 
 instance
   ( Acquirable l1,
@@ -122,14 +122,14 @@ instance
 
   collectIds (l1, l2) = [getId l1, getId l2]
 
-  lockInOrder indices (l1, l2) = L.do
-    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing)
+  acquireInOrder indices (l1, l2) = L.do
+    guards <- L.execStateT (forM_' indices acquireAt) (Nothing, Nothing)
     case guards of
       (Just g1, Just g2) -> L.pure (g1, g2)
       guards -> releaseAndFail guards missingIndices
     where
-      lockAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2)) RIO ()
-      lockAt (MutexSetIndex index) =
+      acquireAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2)) RIO ()
+      acquireAt (MutexSetIndex index) =
         case index of
           0 -> modifyM \case
             (Nothing, g2) -> L.do
@@ -163,14 +163,14 @@ instance
 
   collectIds (l1, l2, l3) = [getId l1, getId l2, getId l3]
 
-  lockInOrder indices (l1, l2, l3) = L.do
-    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing)
+  acquireInOrder indices (l1, l2, l3) = L.do
+    guards <- L.execStateT (forM_' indices acquireAt) (Nothing, Nothing, Nothing)
     case guards of
       (Just g1, Just g2, Just g3) -> L.pure (g1, g2, g3)
       guards -> releaseAndFail guards missingIndices
     where
-      lockAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3)) RIO ()
-      lockAt (MutexSetIndex index) =
+      acquireAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3)) RIO ()
+      acquireAt (MutexSetIndex index) =
         case index of
           0 -> modifyM \case
             (Nothing, g2, g3) -> L.do
@@ -215,14 +215,14 @@ instance
 
   collectIds (l1, l2, l3, l4) = [getId l1, getId l2, getId l3, getId l4]
 
-  lockInOrder indices (l1, l2, l3, l4) = L.do
-    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing, Nothing)
+  acquireInOrder indices (l1, l2, l3, l4) = L.do
+    guards <- L.execStateT (forM_' indices acquireAt) (Nothing, Nothing, Nothing, Nothing)
     case guards of
       (Just g1, Just g2, Just g3, Just g4) -> L.pure (g1, g2, g3, g4)
       guards -> releaseAndFail guards missingIndices
     where
-      lockAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3), Maybe (Guard l4)) RIO ()
-      lockAt (MutexSetIndex index) =
+      acquireAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3), Maybe (Guard l4)) RIO ()
+      acquireAt (MutexSetIndex index) =
         case index of
           0 -> modifyM \case
             (Nothing, g2, g3, g4) -> L.do
@@ -276,14 +276,14 @@ instance
 
   collectIds (l1, l2, l3, l4, l5) = [getId l1, getId l2, getId l3, getId l4, getId l5]
 
-  lockInOrder indices (l1, l2, l3, l4, l5) = L.do
-    guards <- L.execStateT (forM_' indices lockAt) (Nothing, Nothing, Nothing, Nothing, Nothing)
+  acquireInOrder indices (l1, l2, l3, l4, l5) = L.do
+    guards <- L.execStateT (forM_' indices acquireAt) (Nothing, Nothing, Nothing, Nothing, Nothing)
     case guards of
       (Just g1, Just g2, Just g3, Just g4, Just g5) -> L.pure (g1, g2, g3, g4, g5)
       guards -> releaseAndFail guards missingIndices
     where
-      lockAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3), Maybe (Guard l4), Maybe (Guard l5)) RIO ()
-      lockAt (MutexSetIndex index) =
+      acquireAt :: MutexSetIndex -> L.StateT (Maybe (Guard l1), Maybe (Guard l2), Maybe (Guard l3), Maybe (Guard l4), Maybe (Guard l5)) RIO ()
+      acquireAt (MutexSetIndex index) =
         case index of
           0 -> modifyM \case
             (Nothing, g2, g3, g4, g5) -> L.do
