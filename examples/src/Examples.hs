@@ -12,41 +12,15 @@ import LinearLocks.Mutex qualified as Mutex
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as Linear hiding (IO)
 
--- | Acquire 1 lock
---
--- >>> example1
--- hello
-example1 :: IO ()
-example1 = do
-  mutex <- Mutex.new 0 "hello"
-  lockScope \key -> Linear.do
-    (mg, key) <- Mutex.acquire key mutex
-    (Ur str, mg) <- Mutex.read mg
-    Linear.liftSystemIO (putStrLn str)
-    mg <- Mutex.write mg "world"
-    Mutex.release mg
-    Linear.pure (Ur (), key)
-
--- This doesn't compile, we can't acquire locks out of order
--- example2 :: IO ()
--- example2 = do
---   m1 <- Mutex.new 0 "hello"
---   m2 <- Mutex.new 1 "world"
---   lockScope \key -> Linear.do
---     (mg2, key) <- Mutex.acquire key m2
---     (mg1, key) <- Mutex.acquire key m1
---     Mutex.release mg1
---     Mutex.release mg2
---     Linear.pure (Ur (), key)
-
 -- | Acquire 2 locks in order
 --
--- >>> example3
+-- >>> simpleExample
 -- hello world
-example3 :: IO ()
-example3 = do
+simpleExample :: IO ()
+simpleExample = do
   m1 <- Mutex.new 0 "hello"
   m2 <- Mutex.new 1 "world"
+
   lockScope \key -> Linear.do
     (mg1, key) <- Mutex.acquire key m1
     (mg2, key) <- Mutex.acquire key m2
@@ -60,37 +34,26 @@ example3 = do
 
     Linear.pure (Ur (), key)
 
--- | Nested `lockScope`s.
--- This should throw an exception.
---
--- >>> example4
--- *** Exception: Nested lock scopes are not allowed
--- ...
-example4 :: IO ()
-example4 = do
-  m1 <- Mutex.new 0 "hello"
-  m2 <- Mutex.new 1 "world"
-  lockScope \key -> Linear.do
-    (mg2, key) <- Mutex.acquire key m2
-
-    -- Attempt to use nested lockScopes to acquire locks out of order.
-    Linear.liftSystemIO Linear.$ lockScope \key -> Linear.do
-      (mg1, key) <- Mutex.acquire key m1
-      Mutex.release mg1
-      Linear.pure (Ur (), key)
-
-    Mutex.release mg2
-
-    Linear.pure (Ur (), key)
+-- This doesn't compile, we can't acquire locks out of order
+-- outOfOrder :: IO ()
+-- outOfOrder = do
+--   m1 <- Mutex.new 0 "hello"
+--   m2 <- Mutex.new 1 "world"
+--   lockScope \key -> Linear.do
+--     (mg2, key) <- Mutex.acquire key m2
+--     (mg1, key) <- Mutex.acquire key m1
+--     Mutex.release mg1
+--     Mutex.release mg2
+--     Linear.pure (Ur (), key)
 
 -- | Acquire many locks with the same lvl using a `LockSet`
 --
--- >>> example5
+-- >>> lockSets
 -- hello world
 -- hello world
 -- hello world
-example5 :: IO ()
-example5 = do
+lockSets :: IO ()
+lockSets = do
   m1 <- Mutex.new 0 3
   m2 <- Mutex.new 0 "hello world"
   mutexSet <- newLockSet (m1, m2)
