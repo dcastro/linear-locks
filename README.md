@@ -106,7 +106,8 @@ back. Acquiring `Mutex 1 DbConn` then gives us a `LockKey 2`.
 
     Mutex.release configGuard
     Mutex.release dbGuard
-    Linear.pure (Ur (), key)
+    dropKey key
+    Linear.pure (Ur ())
 ```
 
 Acquiring locks in the wrong order (e.g. trying to acquire a lock of
@@ -125,6 +126,9 @@ and `RIO` does not implement `Prelude.Monad`; instead, it implements
 [`Linear.Monad`](https://hackage-content.haskell.org/package/linear-base/docs/Control-Functor-Linear.html#t:Monad)
 from `linear-base`. This ensures values bound by `>>=` must be consumed
 exactly once.
+
+Since dropping the key before returning is a common pattern, we provide
+the `dropKeyAndReturn` function to conveniently do both at once.
 
 <h3>
 
@@ -149,7 +153,7 @@ The guard is also linearly typed, thus ensuring:
     configGuard <- Mutex.write configGuard config { verbose = False }
 
     Mutex.release configGuard
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()
 ```
 
 Since the guard is linear, `read` and `write` must consume the guard and
@@ -183,7 +187,7 @@ to a `LockSet` and using `acquireMany`.
 
     Mutex.release bobGuard
     Mutex.release aliceGuard
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()
 ```
 
 To prevent deadlocks, locks in a set are always acquired in a
@@ -212,7 +216,7 @@ to lift `IO` actions into the lock scope.
 
     configGuard <- Mutex.write configGuard config { verbose = newVerbose }
     Mutex.release configGuard
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()
 ```
 
 Note: for the time being, the `linear-locks` package conditionally

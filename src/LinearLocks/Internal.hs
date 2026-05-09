@@ -67,23 +67,23 @@ instance VU.Unbox LockId
 
 -- | Creates a new lock scope with a key of level 0, and runs the given function with it.
 --  The key can be used to acquire locks with `acquire` and `LinearLocks.acquireMany`.
--- The final key must be returned.
+--
+-- After acquiring all the necessary locks, the key must be dropped with
+-- `dropKey` or `dropKeyAndReturn`.
 --
 -- Will throw a t`NestedLocksScopeException` if a nested `lockScope` is created at runtime.
 lockScope ::
-  forall a lvl.
-  -- Note: The key is linearly typed and must be returned; this prevents it from escaping the scope of the `lockScope` function.
-  --
-  -- The use of `Ur` also prevents any linear values from escaping the scope via the variable `a`.
+  forall a.
+  -- NOTE: The use of `Ur` prevents the key (and any other linear values) from escaping the scope
+  -- of the `lockScope` function via the variable `a`.
   -- See: https://www.tweag.io/blog/2023-03-23-linear-constraints-linearly/#sticky-ends-of-scopes
-  (LockKey 0 %1 -> RIO (Ur a, LockKey lvl)) ->
+  (LockKey 0 %1 -> RIO (Ur a)) ->
   IO a
 lockScope run = do
   ensureNotNested do
     RIO.run L.do
       let key = UnsafeLockKey @0
-      (a, UnsafeLockKey) <- run key
-      L.pure a
+      run key
   where
     -- Ensures nested lock scopes are not created.
     -- We can't really detect this at compile-time, so we'll make do with a runtime check.
@@ -117,6 +117,16 @@ lockScope run = do
             StmSet.delete tid lockScopes
         )
         action
+
+-- | Discard a key. Should be used after acquiring all the necessary locks in a lock scope.
+dropKey :: LockKey lvl %1 -> RIO ()
+dropKey UnsafeLockKey = L.pure ()
+
+-- | Convenience function to drop the key and return a pure value at the end of a lock scope.
+dropKeyAndReturn :: LockKey lvl %1 -> a -> RIO (Ur a)
+dropKeyAndReturn key a = L.do
+  dropKey key
+  L.pure (Ur a)
 
 data NestedLocksScopeException = NestedLocksScopeException
   deriving stock (Show)

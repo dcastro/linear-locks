@@ -32,7 +32,7 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>>     (mg1, key) <- Mutex.acquire key m1
 -- >>>     Mutex.release mg1
 -- >>>     Mutex.release mg2
--- >>>     L.pure (Ur (), key)
+-- >>>     dropKeyAndReturn key ()
 -- >>> :}
 -- ...
 -- ... • Cannot satisfy: 5 <= 2
@@ -45,7 +45,7 @@ unit_read_mutex = do
     (mg, key) <- Mutex.acquire key mutex
     (Ur str, mg) <- Mutex.read mg
     Mutex.release mg
-    L.pure (Ur str, key)
+    dropKeyAndReturn key str
   str @?= "hello"
 
 unit_write_mutex :: IO ()
@@ -55,13 +55,13 @@ unit_write_mutex = do
     (mg, key) <- Mutex.acquire key mutex
     mg <- Mutex.write mg "world"
     Mutex.release mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   str <- lockScope \key -> L.do
     (mg, key) <- Mutex.acquire key mutex
     (Ur str, mg) <- Mutex.read mg
     Mutex.release mg
-    L.pure (Ur str, key)
+    dropKeyAndReturn key str
 
   str @?= "world"
 
@@ -84,7 +84,7 @@ unit_realeases_mvar = do
       isEmpty <- MVar.isEmptyMVar mutex.var
       isEmpty @?= False
 
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   isEmpty <- MVar.isEmptyMVar mutex.var
   isEmpty @?= False
@@ -97,7 +97,7 @@ unit_rolls_back_on_exception = do
     mg <- Mutex.write mg "world"
     L.liftSystemIO L.$ throwIO (userError "oops")
     Mutex.release mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   -- The MVar should have been released, and the original value should have been put back into the MVar.
   mbResult <- MVar.tryTakeMVar mutex.var
@@ -111,7 +111,7 @@ unit_rolls_back_on_imprecise_exception = do
     mg <- Mutex.write mg "world"
     error "err"
     Mutex.release mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   -- The MVar should have been released, and the original value should have been put back into the MVar.
   mbResult <- MVar.tryTakeMVar mutex.var
@@ -139,7 +139,7 @@ unit_release_evaluates_value_to_normal_form = do
           logMsg "ran 'write'"
           Mutex.release mg
           logMsg "ran 'release'"
-          L.pure (Ur (), key)
+          dropKeyAndReturn key ()
 
   run `shouldThrow` errorCall "oops"
 

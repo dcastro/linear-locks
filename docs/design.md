@@ -28,3 +28,12 @@ To keep the interfaces for all locks similar, I decided it would be best to:
 We only export the monomorphic `release` functions for each guard type, because they might have
 important notes in their haddock docs (e.g. `StrictMutex.release` does deep evaluation and might throw an exception as a result),
 so it's important those docs are easily discoverable and not hidden behind a more general `doRelease` function.
+
+
+## `dropKey`
+
+The initial design had no `dropKey` function. `lockScope` required the user to return the key at the end of the block.
+This was an issue: if the `lockScope` block branched out, both blocks had to return a key with the same type, and of the same level.
+In other words, the last lock acquired by both branches had to have the same level.
+
+To eliminate this restriction, we added `dropKey` to allow branches to acquire different locks and then independently discard the key.

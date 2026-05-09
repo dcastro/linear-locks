@@ -32,7 +32,7 @@ simpleExample = do
     Mutex.release mg1
     Mutex.release mg2
 
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
 -- This doesn't compile, we can't acquire locks out of order
 -- outOfOrder :: IO ()
@@ -44,7 +44,7 @@ simpleExample = do
 --     (mg1, key) <- Mutex.acquire key m1
 --     Mutex.release mg1
 --     Mutex.release mg2
---     Linear.pure (Ur (), key)
+--     dropKeyAndReturn key ()
 
 -- | Acquire many locks with the same lvl using a `LockSet`
 --
@@ -68,4 +68,4 @@ lockSets = do
     Mutex.release mg1
     Mutex.release mg2
 
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()

@@ -50,7 +50,7 @@ example = do
     --
     -- Release lock
     RWLock.releaseWrite guard
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()
 :}
 -}
 {- ORMOLU_ENABLE -}

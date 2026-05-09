@@ -39,15 +39,17 @@ example = do
     -- Release locks
     Mutex.release configGuard
     Mutex.release dbGuard
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()
 :}
 
 -}
 {- ORMOLU_ENABLE -}
 module LinearLocks
   ( -- * Lock scope
-    lockScope,
     LockKey,
+    lockScope,
+    dropKey,
+    dropKeyAndReturn,
     NestedLocksScopeException (..),
 
     -- * Lock sets

@@ -31,7 +31,7 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>>     (g1, key) <- RWLock.acquireRead key m1
 -- >>>     RWLock.releaseRead g1
 -- >>>     RWLock.releaseRead g2
--- >>>     L.pure (Ur (), key)
+-- >>>     dropKeyAndReturn key ()
 -- >>> :}
 -- ...
 -- ... • Cannot satisfy: 5 <= 2
@@ -45,7 +45,7 @@ unit_read_mutex = do
     (guard, key) <- RWLock.acquireRead key rwl
     (Ur str, guard) <- RWLock.read guard
     RWLock.releaseRead guard
-    L.pure (Ur str, key)
+    dropKeyAndReturn key str
   str @?= "hello"
 
   -- Read in "write mode"
@@ -53,7 +53,7 @@ unit_read_mutex = do
     (guard, key) <- RWLock.acquireWrite key rwl
     (Ur str, guard) <- RWLock.read guard
     RWLock.releaseWrite guard
-    L.pure (Ur str, key)
+    dropKeyAndReturn key str
   str @?= "hello"
 
 unit_write_mutex :: IO ()
@@ -65,14 +65,14 @@ unit_write_mutex = do
     (guard, key) <- RWLock.acquireWrite key rwl
     guard <- RWLock.write guard "world"
     RWLock.releaseWrite guard
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   -- Read in "read mode"
   str <- lockScope \key -> L.do
     (guard, key) <- RWLock.acquireRead key rwl
     (Ur str, guard) <- RWLock.read guard
     RWLock.releaseRead guard
-    L.pure (Ur str, key)
+    dropKeyAndReturn key str
   str @?= "world"
 
   -- Read in "write mode"
@@ -80,7 +80,7 @@ unit_write_mutex = do
     (guard, key) <- RWLock.acquireWrite key rwl
     (Ur str, guard) <- RWLock.read guard
     RWLock.releaseWrite guard
-    L.pure (Ur str, key)
+    dropKeyAndReturn key str
   str @?= "world"
 
   str <- IORef.readIORef rwl.var
@@ -106,7 +106,7 @@ unit_realeases_ioref_in_read_mode = do
       assertCanRead rwl True
       assertCanWrite rwl True
 
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
   assertCanRead rwl True
@@ -131,7 +131,7 @@ unit_realeases_ioref_in_write_mode = do
       assertCanRead rwl True
       assertCanWrite rwl True
 
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
   assertCanRead rwl True
@@ -145,7 +145,7 @@ unit_rolls_back_on_exception = do
     mg <- RWLock.write mg "world"
     L.liftSystemIO L.$ throwIO (userError "oops")
     RWLock.releaseWrite mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   -- The IORef should have been released, and the original value should have been put back into the IORef.
   assertCanRead rwl True
@@ -161,7 +161,7 @@ unit_rolls_back_on_imprecise_exception = do
     mg <- RWLock.write mg "world"
     error "err"
     RWLock.releaseWrite mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   -- The IORef should have been released, and the original value should have been put back into the IORef.
   assertCanRead rwl True
@@ -184,7 +184,7 @@ unit_release_doesnt_evaluate_value_to_normal_form = do
     mg <- RWLock.write mg [1, 2, error "oops", 4]
     -- This should not throw
     RWLock.releaseWrite mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
 assertCanRead :: RWLock.RWLock lvl a -> Bool -> IO ()
 assertCanRead rwl expected = do

@@ -37,7 +37,7 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- >>>     (mg1, key) <- Mutex.acquire key m1
 -- >>>     Mutex.release mg1
 -- >>>     Mutex.release mg2
--- >>>     L.pure (Ur (), key)
+-- >>>     dropKeyAndReturn key ()
 -- >>> :}
 -- ...
 -- ... • Cannot satisfy: 5 <= 2
@@ -50,7 +50,7 @@ unit_read_mutex = do
     (mg, key) <- Mutex.acquire key mutex
     (Ur str, mg) <- Mutex.read mg
     Mutex.release mg
-    L.pure (Ur str, key)
+    dropKeyAndReturn key str
   str @?= "hello"
 
 unit_write_mutex :: IO ()
@@ -60,13 +60,13 @@ unit_write_mutex = do
     (mg, key) <- Mutex.acquire key mutex
     mg <- Mutex.write mg "world"
     Mutex.release mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   str <- lockScope \key -> L.do
     (mg, key) <- Mutex.acquire key mutex
     (Ur str, mg) <- Mutex.read mg
     Mutex.release mg
-    L.pure (Ur str, key)
+    dropKeyAndReturn key str
 
   str @?= "world"
 
@@ -89,7 +89,7 @@ unit_realeases_mvar = do
       isEmpty <- MVar.isEmptyMVar mutex.var
       isEmpty @?= False
 
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   isEmpty <- MVar.isEmptyMVar mutex.var
   isEmpty @?= False
@@ -99,8 +99,8 @@ unit_cant_nest_lockscopes = do
   let run =
         lockScope \key -> L.do
           L.liftSystemIO do
-            lockScope \key -> L.pure (Ur (), key)
-          L.pure (Ur (), key)
+            lockScope \key -> dropKeyAndReturn key ()
+          dropKeyAndReturn key ()
 
   run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
 
@@ -111,7 +111,7 @@ unit_updates_thread_ids = do
   getThreadIds >>= \tids -> tids @?= []
   lockScope \key -> L.do
     L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
   getThreadIds >>= \tids -> tids @?= []
 
   -- Check that the thread ID is removed even if an exception is thrown.
@@ -119,7 +119,7 @@ unit_updates_thread_ids = do
         lockScope \key -> L.do
           L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
           L.liftSystemIO L.$ throwIO (userError "oops")
-          L.pure (Ur (), key)
+          dropKeyAndReturn key ()
   run `shouldThrow` anyIOException
   getThreadIds >>= \tids -> tids @?= []
 
@@ -128,8 +128,8 @@ unit_updates_thread_ids = do
         lockScope \key -> L.do
           L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
           L.liftSystemIO do
-            lockScope \key -> L.pure (Ur (), key)
-          L.pure (Ur (), key)
+            lockScope \key -> dropKeyAndReturn key ()
+          dropKeyAndReturn key ()
   run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
   getThreadIds >>= \tids -> tids @?= []
 
@@ -137,10 +137,10 @@ unit_updates_thread_ids = do
   lockScope \key -> L.do
     L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
     L.liftSystemIO do
-      Left _ <- try @SomeException $ lockScope \key -> L.pure (Ur (), key)
+      Left _ <- try @SomeException $ lockScope \key -> dropKeyAndReturn key ()
       pure ()
     L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
   getThreadIds >>= \tids -> tids @?= []
   where
     getThreadIds :: IO [ThreadId]
@@ -155,7 +155,7 @@ unit_rolls_back_on_exception = do
     mg <- Mutex.write mg "world"
     L.liftSystemIO L.$ throwIO (userError "oops")
     Mutex.release mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   -- The MVar should have been released, and the original value should have been put back into the MVar.
   mbResult <- MVar.tryTakeMVar mutex.var
@@ -169,7 +169,7 @@ unit_rolls_back_on_imprecise_exception = do
     mg <- Mutex.write mg "world"
     error "err"
     Mutex.release mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   -- The MVar should have been released, and the original value should have been put back into the MVar.
   mbResult <- MVar.tryTakeMVar mutex.var
@@ -190,4 +190,4 @@ unit_release_doesnt_evaluate_value_to_normal_form = do
     mg <- Mutex.write mg [1, 2, error "oops", 4]
     -- This should not throw
     Mutex.release mg
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()

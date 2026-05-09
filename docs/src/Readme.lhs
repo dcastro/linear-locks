@@ -106,7 +106,8 @@ Acquiring `Mutex 1 DbConn` then gives us a `LockKey 2`.
 
     Mutex.release configGuard
     Mutex.release dbGuard
-    Linear.pure (Ur (), key)
+    dropKey key
+    Linear.pure (Ur ())
 \end{code}
 
 Acquiring locks in the wrong order (e.g. trying to acquire a lock of level 0 with a key of level 2) would be a type error.
@@ -118,6 +119,9 @@ Using the same key to acquire 2 locks would be a type error.
 Notice how we had to use `Linear.do` (enabled by the `QualifiedDo` extension) and `Linear.pure` instead of `Prelude.pure` to chain our actions together.
 This is because the lock scope action runs in [`RIO`][RIO], and `RIO` does not implement `Prelude.Monad`; instead, it implements [`Linear.Monad`][Linear.Monad] from `linear-base`.
 This ensures values bound by `>>=` must be consumed exactly once.
+
+Since dropping the key before returning is a common pattern, we provide
+the `dropKeyAndReturn` function to conveniently do both at once.
 
 <h3>Guards</h3>
 
@@ -138,7 +142,7 @@ The guard is also linearly typed, thus ensuring:
     configGuard <- Mutex.write configGuard config { verbose = False }
 
     Mutex.release configGuard
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()
 \end{code}
 
 Since the guard is linear, `read` and `write` must consume the guard and return a new one.
@@ -167,7 +171,7 @@ Locks with the same level must be acquired simultaneously by adding them to a `L
 
     Mutex.release bobGuard
     Mutex.release aliceGuard
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()
 \end{code}
 
 To prevent deadlocks, locks in a set are always acquired in a deterministic order.
@@ -190,7 +194,7 @@ You can use the linear [`MonadIO` from `linear-base`][MonadIO] to lift `IO` acti
 
     configGuard <- Mutex.write configGuard config { verbose = newVerbose }
     Mutex.release configGuard
-    Linear.pure (Ur (), key)
+    dropKeyAndReturn key ()
 \end{code}
 
 Note: for the time being, the `linear-locks` package conditionally provides an orphan instance of `MonadIO` for the `RIO` monad

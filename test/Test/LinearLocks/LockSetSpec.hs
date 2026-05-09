@@ -55,7 +55,7 @@ unit_read_lock_set = do
     Mutex.release mg1
     Mutex.release mg2
     Mutex.release mg3
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
 unit_write_lock_set :: IO ()
 unit_write_lock_set = do
@@ -74,7 +74,7 @@ unit_write_lock_set = do
     Mutex.release mg3
     Mutex.release mg2
     Mutex.release mg1
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
   lockScope \key -> L.do
     ((mg3, mg2, mg1), key) <- acquireMany key set
@@ -91,7 +91,7 @@ unit_write_lock_set = do
     Mutex.release mg3
     Mutex.release mg2
     Mutex.release mg1
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
 
 unit_assigns_unique_lock_ids :: IO ()
 unit_assigns_unique_lock_ids = do
@@ -148,4 +148,4 @@ unit_sets_can_have_mixed_lock_types = do
     StrictMutex.release g1
     Mutex.release g2
     RWLock.releaseRead g3
-    L.pure (Ur (), key)
+    dropKeyAndReturn key ()
