@@ -10,7 +10,6 @@ import Control.Monad.IO.Class.Linear qualified as Linear
 import LinearLocks
 import LinearLocks.Mutex qualified as Mutex
 import Prelude.Linear (Ur (..))
-import Prelude.Linear qualified as Linear hiding (IO)
 
 -- | Acquire 2 locks in order
 --
