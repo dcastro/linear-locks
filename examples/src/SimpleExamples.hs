@@ -2,7 +2,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE QualifiedDo #-}
 
-module Examples where
+module SimpleExamples where
 
 import Control.Functor.Linear qualified as Linear
 import Control.Monad (replicateM_)

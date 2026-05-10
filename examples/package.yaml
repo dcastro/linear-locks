@@ -30,3 +30,12 @@ library:
     - base
     - linear-base
     - linear-locks
+    - cron
+    - text
+    - warp
+    - wai
+    - fsnotify
+    - yaml
+    - aeson
+    - filepath
+    - http-types

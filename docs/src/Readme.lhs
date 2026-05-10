@@ -16,6 +16,9 @@ Currently supported lock types:
   * "LinearLocks.RWLock"
   * "LinearLocks.RWLock.Strict"
 
+See [Getting Started](#getting-started) for a quick introduction to the API.
+Some examples can also be found in the [examples](https://github.com/dcastro/linear-locks/tree/main/examples/src) folder.
+
 Motivation
 ---
 

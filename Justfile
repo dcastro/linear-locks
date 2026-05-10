@@ -6,6 +6,7 @@ checks:
     just doctest
     just test
     just haddock
+    just pandoc
     # check markdown links
     xrefcheck --ignore "release/**/*"
     # Build with `-Werror`
