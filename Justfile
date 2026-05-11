@@ -59,15 +59,23 @@ pandoc:
 ## Release
 ############################################################################
 
-release:
+publish-candidate:
     just checks
-    stack purge
 
+    rm -rf dist-newstyle
     rm -rf release && mkdir release
-    stack sdist . --tar-dir release
 
-upload-docs:
-    mkdir -p release
+    cabal sdist --builddir release
+    cabal upload release/sdist/*.tar.gz
+
+publish-candidate-docs *ARGS:
+    just checks
+
+    rm -rf release/docs
+    mkdir -p release/docs
     cabal update
-    cabal haddock lib:linear-locks --haddock-for-hackage --builddir release
-    cabal upload --documentation release/*-docs.tar.gz
+    cabal haddock lib:linear-locks --haddock-for-hackage --builddir release/docs
+    cabal upload --documentation {{ ARGS }} release/docs/*-docs.tar.gz
+
+publish-final-docs:
+    just publish-candidate-docs --publish
