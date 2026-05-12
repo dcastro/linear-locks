@@ -14,6 +14,7 @@ import LinearLocks.Internal.Mutex qualified as Internal
 import LinearLocks.Mutex qualified as Mutex
 import LinearLocks.Mutex.Strict qualified as StrictMutex
 import LinearLocks.RWLock qualified as RWLock
+import LinearLocks.RWLock.Strict qualified as StrictRWLock
 import Prelude.Linear (Ur (..))
 import Test.Syd
 
@@ -125,21 +126,25 @@ spec = describe "LockSet" do
     m1 <- StrictMutex.new 0 "hello"
     m2 <- Mutex.new @Int 0 99
     m3 <- RWLock.new 0 True
-    set <- newLockSet (m1, m2, RWLock.AsRead m3)
+    m4 <- StrictRWLock.new 0 'a'
+    set <- newLockSet (m1, m2, m3.asRead, m4.asWrite)
 
     lockScope \key -> L.do
-      ((g1, g2, g3), key) <- acquireMany key set
+      ((g1, g2, g3, g4), key) <- acquireMany key set
 
       (Ur res1, g1) <- StrictMutex.read g1
       (Ur res2, g2) <- Mutex.read g2
       (Ur res3, g3) <- RWLock.read g3
+      (Ur res4, g4) <- StrictRWLock.read g4
 
       L.liftSystemIO do
         res1 `shouldBe` "hello"
         res2 `shouldBe` 99
         res3 `shouldBe` True
+        res4 `shouldBe` 'a'
 
       StrictMutex.release g1
       Mutex.release g2
       RWLock.releaseRead g3
+      StrictRWLock.releaseWrite g4
       dropKeyAndReturn key ()

@@ -15,6 +15,7 @@ import Control.Monad.IO.Class.Linear qualified as L
 import Data.IORef (IORef)
 import Data.IORef qualified as IORef
 import Data.Kind (Type)
+import GHC.Records (HasField (..))
 import GHC.TypeLits (Nat, type (+), type (<=))
 import LinearLocks.Internal
 import Prelude.Linear (Ur (..))
@@ -108,6 +109,8 @@ newtype Resource = Resource
 -- | Newtype used to add t'RWLock's to t'LinearLocks.LockSet's.
 newtype AsRead lvl a = AsRead (RWLock lvl a)
 
+instance HasField "asRead" (RWLock lvl a) (AsRead lvl a) where getField = AsRead
+
 instance Acquirable (AsRead lvl a) where
   type Guard (AsRead lvl a) = ReadGuard a
   type Level (AsRead lvl a) = lvl
@@ -175,6 +178,8 @@ data WriteGuard a = WriteGuard
 
 -- | Newtype used to add t'RWLock's to t'LinearLocks.LockSet's.
 newtype AsWrite lvl a = AsWrite (RWLock lvl a)
+
+instance HasField "asWrite" (RWLock lvl a) (AsWrite lvl a) where getField = AsWrite
 
 instance Acquirable (AsWrite lvl a) where
   type Guard (AsWrite lvl a) = WriteGuard a

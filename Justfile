@@ -37,7 +37,7 @@ doctest:
     ./scripts/check_doctest.sh
     stack build doctest
     stack exec doctest -- $(find src test examples/src \( -name '*.lhs' -o -name '*.hs' \) -print) \
-        -XGHC2024 -XBlockArguments -XDuplicateRecordFields -XOverloadedRecordDot -XTypeFamilies -XQualifiedDo
+        -XGHC2024 -XBlockArguments -XTypeFamilies -XQualifiedDo
 
 # Note: `stack haddock` fails to create hyperlinks to definitions in other packages (e.g. `Ur` from `linear-base`)
 
