@@ -58,6 +58,11 @@ pandoc:
 ############################################################################
 ## Release
 ############################################################################
+# Checklist:
+# - [ ] Update version in `package.yaml`
+# - [ ] Update changelog
+# - [ ] Add `@since` annotations to all new public API
+# - [ ] Create GitHub release & tag the commit
 
 publish-candidate:
     just checks
