@@ -5,7 +5,7 @@ cabal-version: 2.2
 -- see: https://github.com/sol/hpack
 
 name:           linear-locks
-version:        0.1.0.0
+version:        0.1.0.1
 synopsis:       Locking primitives free of deadlocks.
 description:    `linear-locks` provides locking primitives that are statically guaranteed to be free of deadlocks.
                 Please see the README on GitHub at <https://github.com/dcastro/linear-locks#readme>
