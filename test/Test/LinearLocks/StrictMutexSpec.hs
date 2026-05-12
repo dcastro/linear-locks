@@ -1,6 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
@@ -17,8 +16,7 @@ import LinearLocks.Mutex.Strict qualified as Mutex
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
 import System.IO.Resource.Linear (RIO)
-import Test.Hspec.Expectations.Pretty (errorCall, shouldThrow)
-import "tasty-hunit-compat" Test.Tasty.HUnit
+import Test.Syd
 
 -- | Doctests
 --
@@ -38,112 +36,107 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- ... • Cannot satisfy: 5 <= 2
 -- ... • In a stmt of a 'do' block: (mg1, key) <- Mutex.acquire key m1
 -- ...
-unit_read_mutex :: IO ()
-unit_read_mutex = do
-  mutex <- Mutex.new 0 "hello"
-  str <- lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    (Ur str, mg) <- Mutex.read mg
-    Mutex.release mg
-    dropKeyAndReturn key str
-  str @?= "hello"
+spec :: Spec
+spec = describe "Strict Mutex" do
+  it "read mutex" do
+    mutex <- Mutex.new 0 "hello"
+    str <- lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      (Ur str, mg) <- Mutex.read mg
+      Mutex.release mg
+      dropKeyAndReturn key str
+    str `shouldBe` "hello"
 
-unit_write_mutex :: IO ()
-unit_write_mutex = do
-  mutex <- Mutex.new 0 "hello"
-  lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    mg <- Mutex.write mg "world"
-    Mutex.release mg
-    dropKeyAndReturn key ()
+  it "write mutex" do
+    mutex <- Mutex.new 0 "hello"
+    lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      mg <- Mutex.write mg "world"
+      Mutex.release mg
+      dropKeyAndReturn key ()
 
-  str <- lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    (Ur str, mg) <- Mutex.read mg
-    Mutex.release mg
-    dropKeyAndReturn key str
+    str <- lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      (Ur str, mg) <- Mutex.read mg
+      Mutex.release mg
+      dropKeyAndReturn key str
 
-  str @?= "world"
+    str `shouldBe` "world"
 
-  str <- MVar.readMVar mutex.var
-  str.unNF @?= "world"
+    str <- MVar.readMVar mutex.var
+    str.unNF `shouldBe` "world"
 
-unit_realeases_mvar :: IO ()
-unit_realeases_mvar = do
-  mutex <- Mutex.new 0 "hello"
-  lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
+  it "realeases mvar" do
+    mutex <- Mutex.new 0 "hello"
+    lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
 
-    L.liftSystemIO do
-      isEmpty <- MVar.isEmptyMVar mutex.var
-      isEmpty @?= True
+      L.liftSystemIO do
+        isEmpty <- MVar.isEmptyMVar mutex.var
+        isEmpty `shouldBe` True
 
-    Mutex.release mg
+      Mutex.release mg
 
-    L.liftSystemIO do
-      isEmpty <- MVar.isEmptyMVar mutex.var
-      isEmpty @?= False
+      L.liftSystemIO do
+        isEmpty <- MVar.isEmptyMVar mutex.var
+        isEmpty `shouldBe` False
 
-    dropKeyAndReturn key ()
+      dropKeyAndReturn key ()
 
-  isEmpty <- MVar.isEmptyMVar mutex.var
-  isEmpty @?= False
+    isEmpty <- MVar.isEmptyMVar mutex.var
+    isEmpty `shouldBe` False
 
-unit_rolls_back_on_exception :: IO ()
-unit_rolls_back_on_exception = do
-  mutex <- Mutex.new 0 "hello"
-  Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    mg <- Mutex.write mg "world"
-    L.liftSystemIO L.$ throwIO (userError "oops")
-    Mutex.release mg
-    dropKeyAndReturn key ()
+  it "rolls back on exception" do
+    mutex <- Mutex.new 0 "hello"
+    Left _ <- try @SomeException $ lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      mg <- Mutex.write mg "world"
+      L.liftSystemIO L.$ throwIO (userError "oops")
+      Mutex.release mg
+      dropKeyAndReturn key ()
 
-  -- The MVar should have been released, and the original value should have been put back into the MVar.
-  mbResult <- MVar.tryTakeMVar mutex.var
-  mbResult @?= Just (Internal.mkNF "hello")
+    -- The MVar should have been released, and the original value should have been put back into the MVar.
+    mbResult <- MVar.tryTakeMVar mutex.var
+    mbResult `shouldBe` Just (Internal.mkNF "hello")
 
-unit_rolls_back_on_imprecise_exception :: IO ()
-unit_rolls_back_on_imprecise_exception = do
-  mutex <- Mutex.new 0 "hello"
-  Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    mg <- Mutex.write mg "world"
-    error "err"
-    Mutex.release mg
-    dropKeyAndReturn key ()
+  it "rolls back on imprecise exception" do
+    mutex <- Mutex.new 0 "hello"
+    Left _ <- try @SomeException $ lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      mg <- Mutex.write mg "world"
+      error "err"
+      Mutex.release mg
+      dropKeyAndReturn key ()
 
-  -- The MVar should have been released, and the original value should have been put back into the MVar.
-  mbResult <- MVar.tryTakeMVar mutex.var
-  mbResult @?= Just (Internal.mkNF "hello")
+    -- The MVar should have been released, and the original value should have been put back into the MVar.
+    mbResult <- MVar.tryTakeMVar mutex.var
+    mbResult `shouldBe` Just (Internal.mkNF "hello")
 
-unit_new_evaluates_value_to_normal_form :: IO ()
-unit_new_evaluates_value_to_normal_form = do
-  Mutex.new @[Int] 0 [1, 2, error "oops", 4]
-    `shouldThrow` errorCall "oops"
+  it "new evaluates value to normal form" do
+    Mutex.new @[Int] 0 [1, 2, error "oops", 4]
+      `shouldThrow` errorCall "oops"
 
-unit_release_evaluates_value_to_normal_form :: IO ()
-unit_release_evaluates_value_to_normal_form = do
-  mutex <- Mutex.new @[Int] 0 [1]
+  it "release evaluates value to normal form" do
+    mutex <- Mutex.new @[Int] 0 [1]
 
-  logs <- MVar.newMVar @[String] []
-  let logMsg :: String -> RIO ()
-      logMsg msg = L.liftSystemIO do
-        MVar.modifyMVar_ logs \logs -> pure (logs <> [msg])
+    logs <- MVar.newMVar @[String] []
+    let logMsg :: String -> RIO ()
+        logMsg msg = L.liftSystemIO do
+          MVar.modifyMVar_ logs \logs -> pure (logs <> [msg])
 
-  let run =
-        lockScope \key -> L.do
-          (mg, key) <- Mutex.acquire key mutex
-          logMsg "ran 'acquire'"
-          mg <- Mutex.write mg [1, 2, error "oops", 4]
-          logMsg "ran 'write'"
-          Mutex.release mg
-          logMsg "ran 'release'"
-          dropKeyAndReturn key ()
+    let run =
+          lockScope \key -> L.do
+            (mg, key) <- Mutex.acquire key mutex
+            logMsg "ran 'acquire'"
+            mg <- Mutex.write mg [1, 2, error "oops", 4]
+            logMsg "ran 'write'"
+            Mutex.release mg
+            logMsg "ran 'release'"
+            dropKeyAndReturn key ()
 
-  run `shouldThrow` errorCall "oops"
+    run `shouldThrow` errorCall "oops"
 
-  -- The exception should be thrown WHILE running `release`.
-  -- `write` should NOT throw.
-  msgs <- MVar.takeMVar logs
-  msgs @?= ["ran 'acquire'", "ran 'write'"]
+    -- The exception should be thrown WHILE running `release`.
+    -- `write` should NOT throw.
+    msgs <- MVar.takeMVar logs
+    msgs `shouldBe` ["ran 'acquire'", "ran 'write'"]

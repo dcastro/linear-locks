@@ -1,6 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
@@ -16,8 +15,7 @@ import LinearLocks.Mutex qualified as Mutex
 import LinearLocks.Mutex.Strict qualified as StrictMutex
 import LinearLocks.RWLock qualified as RWLock
 import Prelude.Linear (Ur (..))
-import Test.Hspec.Expectations.Pretty (shouldNotBe, shouldThrow)
-import "tasty-hunit-compat" Test.Tasty.HUnit
+import Test.Syd
 
 -- | Doctests
 --
@@ -33,119 +31,115 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- ... • Couldn't match type ‘2’ with ‘3’
 -- ...     arising from a use of ‘newLockSet’
 -- ...
-unit_read_lock_set :: IO ()
-unit_read_lock_set = do
-  m1 <- Mutex.new 0 "m1"
-  m2 <- Mutex.new 0 "m2"
-  m3 <- Mutex.new 0 "m3"
-  set <- newLockSet (m1, m2, m3)
+spec :: Spec
+spec = describe "LockSet" do
+  it "read lock set" do
+    m1 <- Mutex.new 0 "m1"
+    m2 <- Mutex.new 0 "m2"
+    m3 <- Mutex.new 0 "m3"
+    set <- newLockSet (m1, m2, m3)
 
-  lockScope \key -> L.do
-    ((mg1, mg2, mg3), key) <- acquireMany key set
+    lockScope \key -> L.do
+      ((mg1, mg2, mg3), key) <- acquireMany key set
 
-    (Ur str1, mg1) <- Mutex.read mg1
-    (Ur str2, mg2) <- Mutex.read mg2
-    (Ur str3, mg3) <- Mutex.read mg3
+      (Ur str1, mg1) <- Mutex.read mg1
+      (Ur str2, mg2) <- Mutex.read mg2
+      (Ur str3, mg3) <- Mutex.read mg3
 
-    L.liftSystemIO do
-      str1 @?= "m1"
-      str2 @?= "m2"
-      str3 @?= "m3"
+      L.liftSystemIO do
+        str1 `shouldBe` "m1"
+        str2 `shouldBe` "m2"
+        str3 `shouldBe` "m3"
 
-    Mutex.release mg1
-    Mutex.release mg2
-    Mutex.release mg3
-    dropKeyAndReturn key ()
+      Mutex.release mg1
+      Mutex.release mg2
+      Mutex.release mg3
+      dropKeyAndReturn key ()
 
-unit_write_lock_set :: IO ()
-unit_write_lock_set = do
-  m1 <- Mutex.new 0 "m1"
-  m2 <- Mutex.new 0 "m2"
-  m3 <- Mutex.new 0 "m3"
-  set <- newLockSet (m3, m2, m1)
+  it "write lock set" do
+    m1 <- Mutex.new 0 "m1"
+    m2 <- Mutex.new 0 "m2"
+    m3 <- Mutex.new 0 "m3"
+    set <- newLockSet (m3, m2, m1)
 
-  lockScope \key -> L.do
-    ((mg3, mg2, mg1), key) <- acquireMany key set
+    lockScope \key -> L.do
+      ((mg3, mg2, mg1), key) <- acquireMany key set
 
-    mg3 <- Mutex.write mg3 "m3 updated"
-    mg2 <- Mutex.write mg2 "m2 updated"
-    mg1 <- Mutex.write mg1 "m1 updated"
+      mg3 <- Mutex.write mg3 "m3 updated"
+      mg2 <- Mutex.write mg2 "m2 updated"
+      mg1 <- Mutex.write mg1 "m1 updated"
 
-    Mutex.release mg3
-    Mutex.release mg2
-    Mutex.release mg1
-    dropKeyAndReturn key ()
+      Mutex.release mg3
+      Mutex.release mg2
+      Mutex.release mg1
+      dropKeyAndReturn key ()
 
-  lockScope \key -> L.do
-    ((mg3, mg2, mg1), key) <- acquireMany key set
+    lockScope \key -> L.do
+      ((mg3, mg2, mg1), key) <- acquireMany key set
 
-    (Ur str3, mg3) <- Mutex.read mg3
-    (Ur str2, mg2) <- Mutex.read mg2
-    (Ur str1, mg1) <- Mutex.read mg1
+      (Ur str3, mg3) <- Mutex.read mg3
+      (Ur str2, mg2) <- Mutex.read mg2
+      (Ur str1, mg1) <- Mutex.read mg1
 
-    L.liftSystemIO do
-      str3 @?= "m3 updated"
-      str2 @?= "m2 updated"
-      str1 @?= "m1 updated"
+      L.liftSystemIO do
+        str3 `shouldBe` "m3 updated"
+        str2 `shouldBe` "m2 updated"
+        str1 `shouldBe` "m1 updated"
 
-    Mutex.release mg3
-    Mutex.release mg2
-    Mutex.release mg1
-    dropKeyAndReturn key ()
+      Mutex.release mg3
+      Mutex.release mg2
+      Mutex.release mg1
+      dropKeyAndReturn key ()
 
-unit_assigns_unique_lock_ids :: IO ()
-unit_assigns_unique_lock_ids = do
-  m1 <- Mutex.new 0 ""
-  m2 <- Mutex.new 0 ""
-  m3 <- Mutex.new 0 ""
+  it "assigns unique lock ids" do
+    m1 <- Mutex.new 0 ""
+    m2 <- Mutex.new 0 ""
+    m3 <- Mutex.new 0 ""
 
-  m1.id `shouldNotBe` m2.id
-  m2.id `shouldNotBe` m3.id
-  m1.id `shouldNotBe` m3.id
+    m1.id `shouldNotBe` m2.id
+    m2.id `shouldNotBe` m3.id
+    m1.id `shouldNotBe` m3.id
 
-unit_throws_when_lock_set_contains_duplicates :: IO ()
-unit_throws_when_lock_set_contains_duplicates = do
-  m1 <- Mutex.new 0 ""
-  m2 <- Mutex.new 0 ""
+  it "throws when lock set contains duplicates" do
+    m1 <- Mutex.new 0 ""
+    m2 <- Mutex.new 0 ""
 
-  newLockSet (m1, m2, m1) `shouldThrow` \(err :: IOError) -> err == userError "LockSet: duplicate locks are not allowed"
+    newLockSet (m1, m2, m1) `shouldThrow` \(err :: IOError) -> err == userError "LockSet: duplicate locks are not allowed"
 
-unit_sorts_locks_deterministically :: IO ()
-unit_sorts_locks_deterministically = do
-  m1 <- Mutex.new 0 ""
-  m2 <- Mutex.new 0 ""
-  m3 <- Mutex.new 0 ""
+  it "sorts locks deterministically" do
+    let sortedIndices :: forall set. LockSet set -> VU.Vector Int
+        sortedIndices (Internal.MkLockSet _ indices) = VU.map (\(Internal.LockSetIndex i) -> i) indices
 
-  newLockSet (m1, m2, m3) >>= \set -> sortedIndices set @?= VU.fromList [0, 1, 2]
-  newLockSet (m2, m1, m3) >>= \set -> sortedIndices set @?= VU.fromList [1, 0, 2]
-  newLockSet (m3, m1, m2) >>= \set -> sortedIndices set @?= VU.fromList [1, 2, 0]
-  newLockSet (m1, m3, m2) >>= \set -> sortedIndices set @?= VU.fromList [0, 2, 1]
-  newLockSet (m2, m3, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 0, 1]
-  newLockSet (m3, m2, m1) >>= \set -> sortedIndices set @?= VU.fromList [2, 1, 0]
-  where
-    sortedIndices :: forall set. LockSet set -> VU.Vector Int
-    sortedIndices (Internal.MkLockSet _ indices) = VU.map (\(Internal.LockSetIndex i) -> i) indices
+    m1 <- Mutex.new 0 ""
+    m2 <- Mutex.new 0 ""
+    m3 <- Mutex.new 0 ""
 
-unit_sets_can_have_mixed_lock_types :: IO ()
-unit_sets_can_have_mixed_lock_types = do
-  m1 <- StrictMutex.new 0 "hello"
-  m2 <- Mutex.new @Int 0 99
-  m3 <- RWLock.new 0 True
-  set <- newLockSet (m1, m2, RWLock.AsRead (m3))
+    newLockSet (m1, m2, m3) >>= \set -> sortedIndices set `shouldBe` VU.fromList [0, 1, 2]
+    newLockSet (m2, m1, m3) >>= \set -> sortedIndices set `shouldBe` VU.fromList [1, 0, 2]
+    newLockSet (m3, m1, m2) >>= \set -> sortedIndices set `shouldBe` VU.fromList [1, 2, 0]
+    newLockSet (m1, m3, m2) >>= \set -> sortedIndices set `shouldBe` VU.fromList [0, 2, 1]
+    newLockSet (m2, m3, m1) >>= \set -> sortedIndices set `shouldBe` VU.fromList [2, 0, 1]
+    newLockSet (m3, m2, m1) >>= \set -> sortedIndices set `shouldBe` VU.fromList [2, 1, 0]
 
-  lockScope \key -> L.do
-    ((g1, g2, g3), key) <- acquireMany key set
+  it "sets can have mixed lock types" do
+    m1 <- StrictMutex.new 0 "hello"
+    m2 <- Mutex.new @Int 0 99
+    m3 <- RWLock.new 0 True
+    set <- newLockSet (m1, m2, RWLock.AsRead m3)
 
-    (Ur res1, g1) <- StrictMutex.read g1
-    (Ur res2, g2) <- Mutex.read g2
-    (Ur res3, g3) <- RWLock.read g3
+    lockScope \key -> L.do
+      ((g1, g2, g3), key) <- acquireMany key set
 
-    L.liftSystemIO do
-      res1 @?= "hello"
-      res2 @?= 99
-      res3 @?= True
+      (Ur res1, g1) <- StrictMutex.read g1
+      (Ur res2, g2) <- Mutex.read g2
+      (Ur res3, g3) <- RWLock.read g3
 
-    StrictMutex.release g1
-    Mutex.release g2
-    RWLock.releaseRead g3
-    dropKeyAndReturn key ()
+      L.liftSystemIO do
+        res1 `shouldBe` "hello"
+        res2 `shouldBe` 99
+        res3 `shouldBe` True
+
+      StrictMutex.release g1
+      Mutex.release g2
+      RWLock.releaseRead g3
+      dropKeyAndReturn key ()

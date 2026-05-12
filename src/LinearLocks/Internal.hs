@@ -187,16 +187,16 @@ nextLockId = do
   newId <- Atomic.incrCounter 1 lockIdCounter
   pure (LockId newId)
 
+----------------------------------------------------------------------------
+-- Utils
+----------------------------------------------------------------------------
+
 -- Only provide this orphan instance for linear-base <= 0.7.0
 -- The next release will come with this instance built-in: https://github.com/tweag/linear-base/pull/505
 #if !MIN_VERSION_linear_base(0,7,1)
 instance L.MonadIO RIO where
   liftIO action = RIOInternal.RIO (\_ -> action)
 #endif
-
-----------------------------------------------------------------------------
--- Utils
-----------------------------------------------------------------------------
 
 -- | Similar to 'System.IO.Resource.Linear.release', except it uses a different release action than the one registered by 'System.IO.Resource.Linear.unsafeAcquire'.
 release' :: RIO.Resource a %1 -> L.IO () -> RIO ()

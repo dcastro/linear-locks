@@ -1,6 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
@@ -20,8 +19,7 @@ import LinearLocks.RWLock.Strict qualified as RWLock
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
 import System.IO.Resource.Linear (RIO)
-import Test.Hspec.Expectations.Pretty (errorCall, shouldThrow)
-import "tasty-hunit-compat" Test.Tasty.HUnit
+import Test.Syd
 
 -- | Doctests
 --
@@ -41,173 +39,167 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- ... • Cannot satisfy: 5 <= 2
 -- ... • In a stmt of a 'do' block: (g1, key) <- RWLock.acquireRead key m1
 -- ...
-unit_read_mutex :: IO ()
-unit_read_mutex = do
-  rwl <- RWLock.new 0 "hello"
-  -- Read in "read mode"
-  str <- lockScope \key -> L.do
-    (guard, key) <- RWLock.acquireRead key rwl
-    (Ur str, guard) <- RWLock.read guard
-    RWLock.releaseRead guard
-    dropKeyAndReturn key str
-  str @?= "hello"
+spec :: Spec
+spec = describe "Strict RWLock" do
+  it "read mutex" do
+    rwl <- RWLock.new 0 "hello"
+    -- Read in "read mode"
+    str <- lockScope \key -> L.do
+      (guard, key) <- RWLock.acquireRead key rwl
+      (Ur str, guard) <- RWLock.read guard
+      RWLock.releaseRead guard
+      dropKeyAndReturn key str
+    str `shouldBe` "hello"
 
-  -- Read in "write mode"
-  str <- lockScope \key -> L.do
-    (guard, key) <- RWLock.acquireWrite key rwl
-    (Ur str, guard) <- RWLock.read guard
-    RWLock.releaseWrite guard
-    dropKeyAndReturn key str
-  str @?= "hello"
+    -- Read in "write mode"
+    str <- lockScope \key -> L.do
+      (guard, key) <- RWLock.acquireWrite key rwl
+      (Ur str, guard) <- RWLock.read guard
+      RWLock.releaseWrite guard
+      dropKeyAndReturn key str
+    str `shouldBe` "hello"
 
-unit_write_mutex :: IO ()
-unit_write_mutex = do
-  rwl <- RWLock.new 0 "hello"
+  it "write mutex" do
+    rwl <- RWLock.new 0 "hello"
 
-  -- Write in "write mode"
-  lockScope \key -> L.do
-    (guard, key) <- RWLock.acquireWrite key rwl
-    guard <- RWLock.write guard "world"
-    RWLock.releaseWrite guard
-    dropKeyAndReturn key ()
+    -- Write in "write mode"
+    lockScope \key -> L.do
+      (guard, key) <- RWLock.acquireWrite key rwl
+      guard <- RWLock.write guard "world"
+      RWLock.releaseWrite guard
+      dropKeyAndReturn key ()
 
-  -- Read in "read mode"
-  str <- lockScope \key -> L.do
-    (guard, key) <- RWLock.acquireRead key rwl
-    (Ur str, guard) <- RWLock.read guard
-    RWLock.releaseRead guard
-    dropKeyAndReturn key str
-  str @?= "world"
+    -- Read in "read mode"
+    str <- lockScope \key -> L.do
+      (guard, key) <- RWLock.acquireRead key rwl
+      (Ur str, guard) <- RWLock.read guard
+      RWLock.releaseRead guard
+      dropKeyAndReturn key str
+    str `shouldBe` "world"
 
-  -- Read in "write mode"
-  str <- lockScope \key -> L.do
-    (guard, key) <- RWLock.acquireWrite key rwl
-    (Ur str, guard) <- RWLock.read guard
-    RWLock.releaseWrite guard
-    dropKeyAndReturn key str
-  str @?= "world"
+    -- Read in "write mode"
+    str <- lockScope \key -> L.do
+      (guard, key) <- RWLock.acquireWrite key rwl
+      (Ur str, guard) <- RWLock.read guard
+      RWLock.releaseWrite guard
+      dropKeyAndReturn key str
+    str `shouldBe` "world"
 
-  str <- IORef.readIORef rwl.var
-  str.unNF @?= "world"
+    str <- IORef.readIORef rwl.var
+    str.unNF `shouldBe` "world"
 
-unit_realeases_ioref_in_read_mode :: IO ()
-unit_realeases_ioref_in_read_mode = do
-  rwl <- RWLock.new 0 "hello"
-  lockScope \key -> L.do
-    (mg, key) <- RWLock.acquireRead key rwl
+  it "realeases ioref in read mode" do
+    rwl <- RWLock.new 0 "hello"
+    lockScope \key -> L.do
+      (mg, key) <- RWLock.acquireRead key rwl
 
-    -- If the lock was acquired in "read mode",
-    -- we shouldn't be able to acquire it again in "write mode",
-    -- but we should be able to acquire it in "read mode".
-    L.liftSystemIO do
-      assertCanRead rwl True
-      assertCanWrite rwl False
+      -- If the lock was acquired in "read mode",
+      -- we shouldn't be able to acquire it again in "write mode",
+      -- but we should be able to acquire it in "read mode".
+      L.liftSystemIO do
+        assertCanRead rwl True
+        assertCanWrite rwl False
 
-    RWLock.releaseRead mg
+      RWLock.releaseRead mg
 
-    --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
-    L.liftSystemIO do
-      assertCanRead rwl True
-      assertCanWrite rwl True
+      --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
+      L.liftSystemIO do
+        assertCanRead rwl True
+        assertCanWrite rwl True
 
-    dropKeyAndReturn key ()
-
-  --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
-  assertCanRead rwl True
-  assertCanWrite rwl True
-
-unit_realeases_ioref_in_write_mode :: IO ()
-unit_realeases_ioref_in_write_mode = do
-  rwl <- RWLock.new 0 "hello"
-  lockScope \key -> L.do
-    (mg, key) <- RWLock.acquireWrite key rwl
-
-    -- If the lock was acquired in "write mode",
-    -- we shouldn't be able to acquire it again in "write mode" or "read mode".
-    L.liftSystemIO do
-      assertCanRead rwl False
-      assertCanWrite rwl False
-
-    RWLock.releaseWrite mg
+      dropKeyAndReturn key ()
 
     --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
-    L.liftSystemIO do
-      assertCanRead rwl True
-      assertCanWrite rwl True
+    assertCanRead rwl True
+    assertCanWrite rwl True
 
-    dropKeyAndReturn key ()
+  it "realeases ioref in write mode" do
+    rwl <- RWLock.new 0 "hello"
+    lockScope \key -> L.do
+      (mg, key) <- RWLock.acquireWrite key rwl
 
-  --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
-  assertCanRead rwl True
-  assertCanWrite rwl True
+      -- If the lock was acquired in "write mode",
+      -- we shouldn't be able to acquire it again in "write mode" or "read mode".
+      L.liftSystemIO do
+        assertCanRead rwl False
+        assertCanWrite rwl False
 
-unit_rolls_back_on_exception :: IO ()
-unit_rolls_back_on_exception = do
-  rwl <- RWLock.new 0 "hello"
-  Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- RWLock.acquireWrite key rwl
-    mg <- RWLock.write mg "world"
-    L.liftSystemIO L.$ throwIO (userError "oops")
-    RWLock.releaseWrite mg
-    dropKeyAndReturn key ()
+      RWLock.releaseWrite mg
 
-  -- The IORef should have been released, and the original value should have been put back into the IORef.
-  assertCanRead rwl True
-  assertCanWrite rwl True
-  mbResult <- IORef.readIORef rwl.var
-  mbResult.unNF @?= "hello"
+      --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
+      L.liftSystemIO do
+        assertCanRead rwl True
+        assertCanWrite rwl True
 
-unit_rolls_back_on_imprecise_exception :: IO ()
-unit_rolls_back_on_imprecise_exception = do
-  rwl <- RWLock.new 0 "hello"
-  Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- RWLock.acquireWrite key rwl
-    mg <- RWLock.write mg "world"
-    error "err"
-    RWLock.releaseWrite mg
-    dropKeyAndReturn key ()
+      dropKeyAndReturn key ()
 
-  -- The IORef should have been released, and the original value should have been put back into the IORef.
-  assertCanRead rwl True
-  assertCanWrite rwl True
-  mbResult <- IORef.readIORef rwl.var
-  mbResult.unNF @?= "hello"
+    --  The lock was released, we should be able to acquire it in both "read mode" and "write mode".
+    assertCanRead rwl True
+    assertCanWrite rwl True
 
-unit_new_evaluates_value_to_normal_form :: IO ()
-unit_new_evaluates_value_to_normal_form = do
-  RWLock.new @[Int] 0 [1, 2, error "oops", 4]
-    `shouldThrow` errorCall "oops"
+  it "rolls back on exception" do
+    rwl <- RWLock.new 0 "hello"
+    Left _ <- try @SomeException $ lockScope \key -> L.do
+      (mg, key) <- RWLock.acquireWrite key rwl
+      mg <- RWLock.write mg "world"
+      L.liftSystemIO L.$ throwIO (userError "oops")
+      RWLock.releaseWrite mg
+      dropKeyAndReturn key ()
 
-unit_release_evaluates_value_to_normal_form :: IO ()
-unit_release_evaluates_value_to_normal_form = do
-  mutex <- RWLock.new @[Int] 0 [1]
+    -- The IORef should have been released, and the original value should have been put back into the IORef.
+    assertCanRead rwl True
+    assertCanWrite rwl True
+    mbResult <- IORef.readIORef rwl.var
+    mbResult.unNF `shouldBe` "hello"
 
-  logs <- MVar.newMVar @[String] []
-  let logMsg :: String -> RIO ()
-      logMsg msg = L.liftSystemIO do
-        MVar.modifyMVar_ logs \logs -> pure (logs <> [msg])
+  it "rolls back on imprecise exception" do
+    rwl <- RWLock.new 0 "hello"
+    Left _ <- try @SomeException $ lockScope \key -> L.do
+      (mg, key) <- RWLock.acquireWrite key rwl
+      mg <- RWLock.write mg "world"
+      error "err"
+      RWLock.releaseWrite mg
+      dropKeyAndReturn key ()
 
-  let run =
-        lockScope \key -> L.do
-          (mg, key) <- RWLock.acquireWrite key mutex
-          logMsg "ran 'acquire'"
-          mg <- RWLock.write mg [1, 2, error "oops", 4]
-          logMsg "ran 'write'"
-          RWLock.releaseWrite mg
-          logMsg "ran 'release'"
-          dropKeyAndReturn key ()
+    -- The IORef should have been released, and the original value should have been put back into the IORef.
+    assertCanRead rwl True
+    assertCanWrite rwl True
+    mbResult <- IORef.readIORef rwl.var
+    mbResult.unNF `shouldBe` "hello"
 
-  run `shouldThrow` errorCall "oops"
+  it "new evaluates value to normal form" do
+    RWLock.new @[Int] 0 [1, 2, error "oops", 4]
+      `shouldThrow` errorCall "oops"
 
-  -- The exception should be thrown WHILE running `release`.
-  -- `write` should NOT throw.
-  msgs <- MVar.takeMVar logs
-  msgs @?= ["ran 'acquire'", "ran 'write'"]
+  it "release evaluates value to normal form" do
+    mutex <- RWLock.new @[Int] 0 [1]
+
+    logs <- MVar.newMVar @[String] []
+    let logMsg :: String -> RIO ()
+        logMsg msg = L.liftSystemIO do
+          MVar.modifyMVar_ logs \logs -> pure (logs <> [msg])
+
+    let run =
+          lockScope \key -> L.do
+            (mg, key) <- RWLock.acquireWrite key mutex
+            logMsg "ran 'acquire'"
+            mg <- RWLock.write mg [1, 2, error "oops", 4]
+            logMsg "ran 'write'"
+            RWLock.releaseWrite mg
+            logMsg "ran 'release'"
+            dropKeyAndReturn key ()
+
+    run `shouldThrow` errorCall "oops"
+
+    -- The exception should be thrown WHILE running `release`.
+    -- `write` should NOT throw.
+    msgs <- MVar.takeMVar logs
+    msgs `shouldBe` ["ran 'acquire'", "ran 'write'"]
 
 assertCanRead :: RWLock.RWLock lvl a -> Bool -> IO ()
 assertCanRead rwl expected = do
   canRead <- Conc.tryAcquireRead rwl.lock
-  canRead @?= expected
+  canRead `shouldBe` expected
   -- Release the lock if it was acquired.
   when canRead do
     Conc.releaseRead rwl.lock
@@ -215,7 +207,7 @@ assertCanRead rwl expected = do
 assertCanWrite :: RWLock.RWLock lvl a -> Bool -> IO ()
 assertCanWrite rwl expected = do
   canWrite <- Conc.tryAcquireWrite rwl.lock
-  canWrite @?= expected
+  canWrite `shouldBe` expected
   -- Release the lock if it was acquired.
   when canWrite do
     Conc.releaseWrite rwl.lock

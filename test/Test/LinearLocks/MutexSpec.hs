@@ -1,6 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE QualifiedDo #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
@@ -22,8 +21,8 @@ import ListT qualified
 import Prelude.Linear (Ur (..))
 import Prelude.Linear qualified as L hiding (IO)
 import StmContainers.Set qualified as StmSet
-import Test.Hspec.Expectations.Pretty (anyIOException, shouldThrow)
-import "tasty-hunit-compat" Test.Tasty.HUnit
+import Test.LinearLocks.Utils
+import Test.Syd
 
 -- | Doctests
 --
@@ -43,151 +42,143 @@ import "tasty-hunit-compat" Test.Tasty.HUnit
 -- ... • Cannot satisfy: 5 <= 2
 -- ... • In a stmt of a 'do' block: (mg1, key) <- Mutex.acquire key m1
 -- ...
-unit_read_mutex :: IO ()
-unit_read_mutex = do
-  mutex <- Mutex.new 0 "hello"
-  str <- lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    (Ur str, mg) <- Mutex.read mg
-    Mutex.release mg
-    dropKeyAndReturn key str
-  str @?= "hello"
+spec :: Spec
+spec = describe "Mutex" do
+  it "read mutex" do
+    mutex <- Mutex.new 0 "hello"
+    str <- lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      (Ur str, mg) <- Mutex.read mg
+      Mutex.release mg
+      dropKeyAndReturn key str
+    str `shouldBe` "hello"
 
-unit_write_mutex :: IO ()
-unit_write_mutex = do
-  mutex <- Mutex.new 0 "hello"
-  lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    mg <- Mutex.write mg "world"
-    Mutex.release mg
-    dropKeyAndReturn key ()
+  it "write mutex" do
+    mutex <- Mutex.new 0 "hello"
+    lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      mg <- Mutex.write mg "world"
+      Mutex.release mg
+      dropKeyAndReturn key ()
 
-  str <- lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    (Ur str, mg) <- Mutex.read mg
-    Mutex.release mg
-    dropKeyAndReturn key str
+    str <- lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      (Ur str, mg) <- Mutex.read mg
+      Mutex.release mg
+      dropKeyAndReturn key str
 
-  str @?= "world"
+    str `shouldBe` "world"
 
-  str <- MVar.readMVar mutex.var
-  str @?= "world"
+    str <- MVar.readMVar mutex.var
+    str `shouldBe` "world"
 
-unit_realeases_mvar :: IO ()
-unit_realeases_mvar = do
-  mutex <- Mutex.new 0 "hello"
-  lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
+  it "realeases mvar" do
+    mutex <- Mutex.new 0 "hello"
+    lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
 
-    L.liftSystemIO do
-      isEmpty <- MVar.isEmptyMVar mutex.var
-      isEmpty @?= True
+      L.liftSystemIO do
+        isEmpty <- MVar.isEmptyMVar mutex.var
+        isEmpty `shouldBe` True
 
-    Mutex.release mg
+      Mutex.release mg
 
-    L.liftSystemIO do
-      isEmpty <- MVar.isEmptyMVar mutex.var
-      isEmpty @?= False
+      L.liftSystemIO do
+        isEmpty <- MVar.isEmptyMVar mutex.var
+        isEmpty `shouldBe` False
 
-    dropKeyAndReturn key ()
+      dropKeyAndReturn key ()
 
-  isEmpty <- MVar.isEmptyMVar mutex.var
-  isEmpty @?= False
+    isEmpty <- MVar.isEmptyMVar mutex.var
+    isEmpty `shouldBe` False
 
-unit_cant_nest_lockscopes :: IO ()
-unit_cant_nest_lockscopes = do
-  let run =
-        lockScope \key -> L.do
-          L.liftSystemIO do
-            lockScope \key -> dropKeyAndReturn key ()
-          dropKeyAndReturn key ()
+  it "can't nest lock scopes" do
+    let run =
+          lockScope \key -> L.do
+            L.liftSystemIO do
+              lockScope \key -> dropKeyAndReturn key ()
+            dropKeyAndReturn key ()
 
-  run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
+    run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
 
-unit_updates_thread_ids :: IO ()
-unit_updates_thread_ids = do
-  tid <- myThreadId
+  it "updates thread ids" do
+    let getThreadIds :: IO [ThreadId]
+        getThreadIds =
+          Internal.lockScopes & StmSet.listT & ListT.toList & atomically
+    tid <- myThreadId
 
-  getThreadIds >>= \tids -> tids @?= []
-  lockScope \key -> L.do
-    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    dropKeyAndReturn key ()
-  getThreadIds >>= \tids -> tids @?= []
+    getThreadIds >>= \tids -> tids `shouldNotContain` [tid]
+    lockScope \key -> L.do
+      L.liftSystemIO L.$ getThreadIds >>= \tids -> tids `shouldContain` [tid]
+      dropKeyAndReturn key ()
+    getThreadIds >>= \tids -> tids `shouldNotContain` [tid]
 
-  -- Check that the thread ID is removed even if an exception is thrown.
-  let run =
-        lockScope \key -> L.do
-          L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-          L.liftSystemIO L.$ throwIO (userError "oops")
-          dropKeyAndReturn key ()
-  run `shouldThrow` anyIOException
-  getThreadIds >>= \tids -> tids @?= []
+    -- Check that the thread ID is removed even if an exception is thrown.
+    let run =
+          lockScope \key -> L.do
+            L.liftSystemIO L.$ getThreadIds >>= \tids -> tids `shouldContain` [tid]
+            L.liftSystemIO L.$ throwIO (userError "oops")
+            dropKeyAndReturn key ()
+    run `shouldThrow` anyIOException
+    getThreadIds >>= \tids -> tids `shouldNotContain` [tid]
 
-  -- Check that the thread ID is removed even if when a nested lock scope is attempted
-  let run =
-        lockScope \key -> L.do
-          L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-          L.liftSystemIO do
-            lockScope \key -> dropKeyAndReturn key ()
-          dropKeyAndReturn key ()
-  run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
-  getThreadIds >>= \tids -> tids @?= []
+    -- Check that the thread ID is removed even if when a nested lock scope is attempted
+    let run =
+          lockScope \key -> L.do
+            L.liftSystemIO L.$ getThreadIds >>= \tids -> tids `shouldContain` [tid]
+            L.liftSystemIO do
+              lockScope \key -> dropKeyAndReturn key ()
+            dropKeyAndReturn key ()
+    run `shouldThrow` \(_ :: NestedLocksScopeException) -> True
+    getThreadIds >>= \tids -> tids `shouldNotContain` [tid]
 
-  -- Check that the thread ID is NOT removed if a nested lock scope is caught
-  lockScope \key -> L.do
-    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    L.liftSystemIO do
-      Left _ <- try @SomeException $ lockScope \key -> dropKeyAndReturn key ()
-      pure ()
-    L.liftSystemIO L.$ getThreadIds >>= \tids -> tids @?= [tid]
-    dropKeyAndReturn key ()
-  getThreadIds >>= \tids -> tids @?= []
-  where
-    getThreadIds :: IO [ThreadId]
-    getThreadIds =
-      Internal.lockScopes & StmSet.listT & ListT.toList & atomically
+    -- Check that the thread ID is NOT removed if a nested lock scope is caught
+    lockScope \key -> L.do
+      L.liftSystemIO L.$ getThreadIds >>= \tids -> tids `shouldContain` [tid]
+      L.liftSystemIO do
+        Left _ <- try @SomeException $ lockScope \key -> dropKeyAndReturn key ()
+        pure ()
+      L.liftSystemIO L.$ getThreadIds >>= \tids -> tids `shouldContain` [tid]
+      dropKeyAndReturn key ()
+    getThreadIds >>= \tids -> tids `shouldNotContain` [tid]
 
-unit_rolls_back_on_exception :: IO ()
-unit_rolls_back_on_exception = do
-  mutex <- Mutex.new 0 "hello"
-  Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    mg <- Mutex.write mg "world"
-    L.liftSystemIO L.$ throwIO (userError "oops")
-    Mutex.release mg
-    dropKeyAndReturn key ()
+  it "rolls back on exception" do
+    mutex <- Mutex.new 0 "hello"
+    Left _ <- try @SomeException $ lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      mg <- Mutex.write mg "world"
+      L.liftSystemIO L.$ throwIO (userError "oops")
+      Mutex.release mg
+      dropKeyAndReturn key ()
 
-  -- The MVar should have been released, and the original value should have been put back into the MVar.
-  mbResult <- MVar.tryTakeMVar mutex.var
-  mbResult @?= Just "hello"
+    -- The MVar should have been released, and the original value should have been put back into the MVar.
+    mbResult <- MVar.tryTakeMVar mutex.var
+    mbResult `shouldBe` Just "hello"
 
-unit_rolls_back_on_imprecise_exception :: IO ()
-unit_rolls_back_on_imprecise_exception = do
-  mutex <- Mutex.new 0 "hello"
-  Left _ <- try @SomeException $ lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
-    mg <- Mutex.write mg "world"
-    error "err"
-    Mutex.release mg
-    dropKeyAndReturn key ()
+  it "rolls back on imprecise exception" do
+    mutex <- Mutex.new 0 "hello"
+    Left _ <- try @SomeException $ lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      mg <- Mutex.write mg "world"
+      error "err"
+      Mutex.release mg
+      dropKeyAndReturn key ()
 
-  -- The MVar should have been released, and the original value should have been put back into the MVar.
-  mbResult <- MVar.tryTakeMVar mutex.var
-  mbResult @?= Just "hello"
+    -- The MVar should have been released, and the original value should have been put back into the MVar.
+    mbResult <- MVar.tryTakeMVar mutex.var
+    mbResult `shouldBe` Just "hello"
 
-unit_new_doesnt_evaluate_value_to_normal_form :: IO ()
-unit_new_doesnt_evaluate_value_to_normal_form = do
-  -- This should not throw, the "error" thunk should not be evaluated
-  void $ Mutex.new @[Int] 0 [1, 2, error "oops", 4]
-
-unit_release_doesnt_evaluate_value_to_normal_form :: IO ()
-unit_release_doesnt_evaluate_value_to_normal_form = do
-  mutex <- Mutex.new @[Int] 0 [1]
-
-  lockScope \key -> L.do
-    (mg, key) <- Mutex.acquire key mutex
+  it "new doesn't evaluate value to normal form" do
     -- This should not throw, the "error" thunk should not be evaluated
-    mg <- Mutex.write mg [1, 2, error "oops", 4]
-    -- This should not throw
-    Mutex.release mg
-    dropKeyAndReturn key ()
+    void $ Mutex.new @[Int] 0 [1, 2, error "oops", 4]
+
+  it "release doesn't evaluate value to normal form" do
+    mutex <- Mutex.new @[Int] 0 [1]
+
+    lockScope \key -> L.do
+      (mg, key) <- Mutex.acquire key mutex
+      -- This should not throw, the "error" thunk should not be evaluated
+      mg <- Mutex.write mg [1, 2, error "oops", 4]
+      -- This should not throw
+      Mutex.release mg
+      dropKeyAndReturn key ()

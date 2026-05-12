@@ -75,6 +75,7 @@ test-suite linear-locks-test
       Test.LinearLocks.RWLockSpec
       Test.LinearLocks.StrictMutexSpec
       Test.LinearLocks.StrictRWLockSpec
+      Test.LinearLocks.Utils
       Paths_linear_locks
   autogen-modules:
       Paths_linear_locks
@@ -84,18 +85,16 @@ test-suite linear-locks-test
       BlockArguments
       StrictData
       TypeFamilies
-  ghc-options: -Weverything -Wno-name-shadowing -Wno-missing-exported-signatures -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missed-specialisations -Wno-all-missed-specialisations -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-implicit-prelude -Wno-prepositive-qualified-module -Wno-missing-safe-haskell-mode -Wno-missing-kind-signatures -Wno-missing-role-annotations
+  ghc-options: -Weverything -Wno-name-shadowing -Wno-missing-exported-signatures -Wno-missing-import-lists -Wno-missing-export-lists -Wno-missed-specialisations -Wno-all-missed-specialisations -Wno-unsafe -Wno-safe -Wno-missing-local-signatures -Wno-monomorphism-restriction -Wno-implicit-prelude -Wno-prepositive-qualified-module -Wno-missing-safe-haskell-mode -Wno-missing-kind-signatures -Wno-missing-role-annotations -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
-      tasty-discover:tasty-discover
+      sydtest-discover:sydtest-discover
   build-depends:
       base
     , concurrent-extra
-    , hspec-expectations-pretty-diff
     , linear-base
     , linear-locks
     , list-t
     , stm-containers
-    , tasty
-    , tasty-hunit-compat
+    , sydtest
     , vector
   default-language: GHC2024
