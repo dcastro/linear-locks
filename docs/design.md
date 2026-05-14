@@ -37,3 +37,37 @@ This was an issue: if the `lockScope` block branched out, both blocks had to ret
 In other words, the last lock acquired by both branches had to have the same level.
 
 To eliminate this restriction, we added `dropKey` to allow branches to acquire different locks and then independently discard the key.
+
+
+## `withMutex`
+
+An implementation of `withMutex` is _possible_:
+
+```hs
+withMutex ::
+  (keyLvl <= mutexLvl) =>
+  LockKey keyLvl %1 ->
+  Mutex mutexLvl a ->
+  (a -> LockKey (mutexLvl + 1) %1 -> RIO (Ur a, res, LockKey finalLvl)) ->
+  RIO (res, LockKey finalLvl)
+withMutex key m action = L.do
+  (guard, key) <- acquire key m
+  (Ur a, guard) <- read guard
+  (Ur newValue, res, key) <- action a key
+  guard <- write guard newValue
+  release guard
+  L.pure (res, key)
+```
+
+But I decided not to include it for these reasons:
+
+* The ergonomics start to degrade when handling 2 or more locks, it quickly becomes unbearable.
+  * Demo: https://gist.github.com/dcastro/c899eb6cde588a2bdbc45ba442a98fc8
+* Unlike the "acquire + release" API, the `withMutex` API would not allow "partial overlaps" of critical sections, e.g.:
+  * acquire lock 1
+  * acquire lock 2
+  * release lock 1
+  * release lock 2
+
+Since the point of the package is to allow safely handling many locks, it makes little sense to provide an API that would
+optimize for single lock scenarios and be useless otherwise.
